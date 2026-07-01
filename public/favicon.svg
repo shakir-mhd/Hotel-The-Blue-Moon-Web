@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Rounded square background of deep navy -->
+  <rect width="32" height="32" rx="8" fill="#0c1a30"/>
+  <!-- Gold crescent moon -->
+  <path d="M19 8c-4.42 0-8 3.58-8 8s3.58 8 8 8c1.35 0 2.62-.34 3.73-.93-2.16-1.31-3.63-3.68-3.63-6.4S20.57 10.3 22.73 9C21.62 8.34 20.35 8 19 8z" fill="#d5b780" stroke="#b8813d" stroke-width="0.5" />
+</svg>
