@@ -93,7 +93,7 @@ window.selectStaffPosition = function(position, defaultUser, defaultPass) {
   if (passField && defaultPass) passField.value = defaultPass;
 
   // Hide selector step, display login form
-  document.getElementById('position-selector-step')?.classList.add('d-none');
+  document.getElementById('position-selection-step')?.classList.add('d-none');
   document.getElementById('position-login-step')?.classList.remove('d-none');
   document.getElementById('login-error-alert')?.classList.add('d-none');
 
@@ -103,7 +103,7 @@ window.selectStaffPosition = function(position, defaultUser, defaultPass) {
 // Reset position selection to return to role cards
 window.resetPositionSelection = function() {
   adminState.selectedPosition = null;
-  document.getElementById('position-selector-step')?.classList.remove('d-none');
+  document.getElementById('position-selection-step')?.classList.remove('d-none');
   document.getElementById('position-login-step')?.classList.add('d-none');
   document.getElementById('login-error-alert')?.classList.add('d-none');
 
