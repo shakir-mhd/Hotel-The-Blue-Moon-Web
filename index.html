@@ -1,14 +1,963 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Experience unparalleled luxury and relaxation at Hotel The Blue Moon, a premier seaside resort offering scenic views, infinity pool, iconic spa, and world-class accommodation." />
-    <title>Hotel The Blue Moon | Luxury Resort &amp; Spa</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Experience unparalleled luxury and relaxation at Hotel The Blue Moon, a premier seaside resort offering scenic ocean views, infinity pool, iconic spa, and world-class accommodation in Unawatuna, Galle, Sri Lanka.">
+  <title>Hotel The Blue Moon | Luxury Resort &amp; Spa</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/css/styles.css">
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Supabase JS SDK (Ready for Phase 2 DB Integration) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <!-- ==========================================
+       HEADER & NAVIGATION BAR
+       ========================================== -->
+  <nav class="navbar navbar-expand-lg fixed-top navbar-custom">
+    <div class="container">
+      <!-- Brand Logo -->
+      <a class="navbar-brand d-flex align-items-center text-white cursor-pointer" onclick="switchTab('home')">
+        <div class="position-relative me-2">
+          <i data-lucide="moon" class="text-warning" style="width: 28px; height: 28px; transform: rotate(-12deg);"></i>
+          <i data-lucide="anchor" class="text-white position-absolute bottom-0 end-0 opacity-75" style="width: 14px; height: 14px;"></i>
+        </div>
+        <div class="d-flex flex-column">
+          <span class="font-serif fw-bold text-white fs-5 leading-none">Hotel The Blue Moon</span>
+          <span class="text-warning-subtle text-uppercase tracking-widest font-sans" style="font-size: 8px;">Luxury Beach Resort</span>
+        </div>
+      </a>
+
+      <!-- Mobile Hamburger Button -->
+      <button class="navbar-toggler text-white border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+        <i data-lucide="menu" class="text-white"></i>
+      </button>
+
+      <!-- Desktop & Collapsible Links -->
+      <div class="collapse navbar-collapse" id="navbarContent">
+        <ul class="navbar-nav mx-auto mb-2 mb-lg-0 gap-lg-4 text-center">
+          <li class="nav-item">
+            <a class="nav-link nav-link-custom active" data-tab="home" onclick="switchTab('home')">HOME</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link nav-link-custom" data-tab="rooms" onclick="switchTab('rooms')">ROOMS</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link nav-link-custom" data-tab="pricing" onclick="switchTab('pricing')">PRICING</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link nav-link-custom" data-tab="amenities" onclick="switchTab('amenities')">AMENITIES</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link nav-link-custom" data-tab="contact" onclick="switchTab('contact')">CONTACT</a>
+          </li>
+        </ul>
+        <div class="d-flex justify-content-center mt-3 mt-lg-0">
+          <button class="btn btn-resort-outline-gold" onclick="switchTab('pricing')">RESERVATION</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+
+  <!-- ==========================================
+       TAB 1: HOME PAGE VIEW
+       ========================================== -->
+  <div id="tab-view-home" class="tab-content-view">
+    <!-- Hero Banner -->
+    <section class="hero-section" style="background-image: url('/images/hero-bg.jpg');">
+      <div class="hero-overlay"></div>
+      <div class="container position-relative z-2 text-center">
+        <h1 class="display-2 font-serif text-white fw-medium mb-4">
+          Hotel The <span style="color: var(--resort-gold-300);">Blue Moon</span>
+        </h1>
+        <p class="lead text-white-90 max-w-2xl mx-auto mb-5 font-sans font-light">
+          If you are looking for a perfect holiday experience with memories to cherish, you are at the right place. Let's plan a reasonable stay for you.
+        </p>
+        <button class="btn btn-resort-navy bg-white text-dark border-white hover-gold px-4 py-3" onclick="switchTab('pricing')">
+          BOOK YOUR STAY NOW <i data-lucide="chevron-right" class="ms-1" style="width: 16px;"></i>
+        </button>
+      </div>
+
+      <!-- Scroll Indicator -->
+      <div class="position-absolute bottom-0 start-50 translate-middle-x mb-4 text-center animate-bounce-custom cursor-pointer" onclick="window.scrollTo({top: 600, behavior: 'smooth'})">
+        <span class="text-white-50 uppercase tracking-widest font-sans d-block mb-1" style="font-size: 9px;">SCROLL DOWN</span>
+        <div class="mx-auto rounded-pill border border-warning" style="width: 4px; height: 20px;"></div>
+      </div>
+    </section>
+
+    <!-- About Section Preview -->
+    <section class="py-5 bg-white">
+      <div class="container py-4">
+        <div class="row align-items-center g-5">
+          <div class="col-lg-5 position-relative">
+            <img src="/images/about-spa.jpg" alt="Hotel Spa" class="img-fluid rounded-3 shadow-lg w-100" style="height: 480px; object-fit: cover;">
+            <div class="position-absolute bottom-0 start-0 mb-4 ms-4 bg-dark text-white p-4 rounded-end shadow-lg border-start border-4 border-warning" style="max-width: 220px; background-color: var(--resort-blue-950) !important;">
+              <span class="h1 font-serif text-warning d-block mb-0">10+</span>
+              <span class="small text-white-50 text-uppercase tracking-wider font-sans" style="font-size: 10px;">Years of Luxury Hospitality Experience</span>
+            </div>
+          </div>
+          <div class="col-lg-7">
+            <span class="subtitle-gold">WELCOME TO PARADISE</span>
+            <h2 class="display-5 font-serif fw-bold text-dark mb-4">
+              Experience the Life of <br><span class="text-warning italic">Hotel The Blue Moon</span>
+            </h2>
+            <p class="text-secondary mb-4 leading-relaxed">
+              We will help you experience the Blue Moon life in its true sense. From living among the residents to eating authentic delicacies you are sure to walk home with memories and wonderful moments.
+            </p>
+            <p class="text-muted small mb-4">
+              Surrounded by scenic beauty and attractive tourist attractions we make it convenient for you to visit all the beautiful places with our inhouse guide. We can also help you arrange transport facilities for an easier commute to nearby places.
+            </p>
+            <button class="btn btn-resort-navy mb-4" onclick="switchTab('rooms')">KNOW MORE</button>
+
+            <div class="rounded-3 overflow-hidden shadow mt-3 img-zoom-container" style="height: 220px;">
+              <img src="/images/about-room.jpg" alt="Santorini Vista" class="w-100 h-100 object-fit-cover">
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Rooms Section Preview -->
+    <section class="py-5 bg-light border-top border-bottom">
+      <div class="container py-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-5">
+          <div>
+            <span class="subtitle-gold">LUXURY STAYS</span>
+            <h2 class="display-6 font-serif fw-bold text-dark">Come &amp; Stay With Us</h2>
+            <p class="text-secondary small max-w-xl mb-0">
+              Pick any of our hotel rooms to experience the delightful decor, complemented with modern amenities for a comfortable stay.
+            </p>
+          </div>
+          <button class="btn btn-resort-navy mt-3 mt-md-0" onclick="switchTab('rooms')">VIEW ALL</button>
+        </div>
+
+        <div class="row g-4">
+          <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-3 overflow-hidden h-100 card-hover-lift">
+              <div class="img-zoom-container" style="height: 320px;">
+                <img src="/images/room-single.jpg" class="w-100 h-100 object-fit-cover" alt="Single Room">
+              </div>
+              <div class="card-body p-4 d-flex flex-column justify-content-between">
+                <div>
+                  <h3 class="h4 font-serif fw-bold text-dark">Single Room</h3>
+                  <p class="text-secondary small">Our single rooms are complemented with modern and luxurious amenities for a wonderful stay.</p>
+                </div>
+                <button class="btn p-0 text-start fw-bold text-uppercase border-bottom border-warning pb-1 text-dark" style="font-size: 11px; width: fit-content;" onclick="switchTab('pricing', 'single')">
+                  VIEW TARIFFS &amp; STAY OPTIONS
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-3 overflow-hidden h-100 card-hover-lift">
+              <div class="img-zoom-container" style="height: 320px;">
+                <img src="/images/room-double.jpg" class="w-100 h-100 object-fit-cover" alt="Double Room">
+              </div>
+              <div class="card-body p-4 d-flex flex-column justify-content-between">
+                <div>
+                  <h3 class="h4 font-serif fw-bold text-dark">Double Room</h3>
+                  <p class="text-secondary small">We offer double rooms designed with a vibrant touch to enhance your spirits for a happening holiday.</p>
+                </div>
+                <button class="btn p-0 text-start fw-bold text-uppercase border-bottom border-warning pb-1 text-dark" style="font-size: 11px; width: fit-content;" onclick="switchTab('pricing', 'double')">
+                  VIEW TARIFFS &amp; STAY OPTIONS
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Amenities Section Preview -->
+    <section class="py-5 bg-white">
+      <div class="container py-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-5">
+          <div>
+            <span class="subtitle-gold">PREMIUM OFFERINGS</span>
+            <h2 class="display-6 font-serif fw-bold text-dark">Amenities &amp; Facilities</h2>
+            <p class="text-secondary small max-w-xl mb-0">
+              If you are looking for a relaxing, refreshing and rejuvenating experience altogether, we offer all of that under one roof.
+            </p>
+          </div>
+          <button class="btn btn-resort-navy mt-3 mt-md-0" onclick="switchTab('amenities')">VIEW ALL</button>
+        </div>
+
+        <div class="row g-4">
+          <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-3 overflow-hidden h-100 card-hover-lift">
+              <div class="img-zoom-container" style="height: 240px;">
+                <img src="/images/amenity-pool.jpg" class="w-100 h-100 object-fit-cover" alt="Infinite Pool">
+              </div>
+              <div class="card-body p-4 d-flex flex-column justify-content-between">
+                <div>
+                  <h3 class="h5 font-serif fw-bold text-dark">An Infinite-edge Pool</h3>
+                  <p class="text-secondary small mb-4">Experience the joy of swimming in our infinity-edge pool that gives you a nice picturesque view.</p>
+                </div>
+                <button class="btn p-0 text-warning fw-bold text-uppercase border-bottom border-warning pb-1" style="font-size: 11px; width: fit-content;" onclick="switchTab('amenities')">
+                  Read More →
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-3 overflow-hidden h-100 card-hover-lift">
+              <div class="img-zoom-container" style="height: 240px;">
+                <img src="/images/amenity-spa.jpg" class="w-100 h-100 object-fit-cover" alt="Iconic Spa">
+              </div>
+              <div class="card-body p-4 d-flex flex-column justify-content-between">
+                <div>
+                  <h3 class="h5 font-serif fw-bold text-dark">An Iconic Spa</h3>
+                  <p class="text-secondary small mb-4">Set forth on an exquisite wellness journey to refresh, re-energize and rejuvenate at our iconic spa.</p>
+                </div>
+                <button class="btn p-0 text-warning fw-bold text-uppercase border-bottom border-warning pb-1" style="font-size: 11px; width: fit-content;" onclick="switchTab('amenities')">
+                  Read More →
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-3 overflow-hidden h-100 card-hover-lift">
+              <div class="img-zoom-container" style="height: 240px;">
+                <img src="/images/amenity-rooms.jpg" class="w-100 h-100 object-fit-cover" alt="Luxurious Rooms">
+              </div>
+              <div class="card-body p-4 d-flex flex-column justify-content-between">
+                <div>
+                  <h3 class="h5 font-serif fw-bold text-dark">Luxurious Rooms</h3>
+                  <p class="text-secondary small mb-4">Our rooms are more than just a place to stay. The relaxing ambience will keep you happy all through.</p>
+                </div>
+                <button class="btn p-0 text-warning fw-bold text-uppercase border-bottom border-warning pb-1" style="font-size: 11px; width: fit-content;" onclick="switchTab('amenities')">
+                  Read More →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Photo Gallery Collage -->
+    <section class="py-5 bg-light">
+      <div class="container py-4">
+        <div class="text-center mb-5">
+          <span class="subtitle-gold">CAPTURED MOMENTS</span>
+          <h2 class="display-6 font-serif fw-bold text-dark">Our Inside Pictures</h2>
+          <div class="bg-warning mx-auto mt-2" style="width: 50px; height: 2px;"></div>
+        </div>
+
+        <div class="row g-3">
+          <div class="col-lg-8">
+            <div class="row g-3">
+              <div class="col-md-6 d-flex flex-column gap-3">
+                <div class="img-zoom-container rounded-3 shadow-sm cursor-pointer" style="height: 240px;" onclick="openLightbox(0)">
+                  <img src="/images/gallery-1.jpg" class="w-100 h-100 object-fit-cover" alt="Ocean View Loungers">
+                </div>
+                <div class="img-zoom-container rounded-3 shadow-sm cursor-pointer" style="height: 240px;" onclick="openLightbox(1)">
+                  <img src="/images/gallery-2.jpg" class="w-100 h-100 object-fit-cover" alt="Resort Dining">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="img-zoom-container rounded-3 shadow-sm cursor-pointer h-100" style="min-height: 495px;" onclick="openLightbox(2)">
+                  <img src="/images/hero-bg.jpg" class="w-100 h-100 object-fit-cover" alt="Terrace Dining">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-4 d-flex flex-column gap-3">
+            <div class="row g-3">
+              <div class="col-6">
+                <div class="img-zoom-container rounded-3 shadow-sm cursor-pointer" style="height: 240px;" onclick="openLightbox(4)">
+                  <img src="/images/gallery-3.jpg" class="w-100 h-100 object-fit-cover" alt="Cliffside Terrace">
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="img-zoom-container rounded-3 shadow-sm cursor-pointer" style="height: 240px;" onclick="openLightbox(5)">
+                  <img src="/images/about-spa.jpg" class="w-100 h-100 object-fit-cover" alt="Greek Dome">
+                </div>
+              </div>
+            </div>
+            <div class="img-zoom-container rounded-3 shadow-sm cursor-pointer" style="height: 240px;" onclick="openLightbox(3)">
+              <img src="/images/room-single.jpg" class="w-100 h-100 object-fit-cover" alt="Ocean View Suite">
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="py-5 bg-white">
+      <div class="container py-4">
+        <div class="text-center mb-5">
+          <span class="subtitle-gold">GUEST EXPERIENCES</span>
+          <h2 class="display-6 font-serif fw-bold text-dark">What Our Guests Say</h2>
+          <div class="bg-warning mx-auto mt-2 mb-3" style="width: 50px; height: 2px;"></div>
+          <p class="text-secondary small max-w-md mx-auto">We take pride in serving our guests with the best experience. Read what they say.</p>
+        </div>
+
+        <div class="row g-4">
+          <div class="col-md-6">
+            <div class="p-4 rounded-3 border bg-light h-100 d-flex flex-column justify-content-between">
+              <div>
+                <div class="text-warning mb-3">★★★★★</div>
+                <p class="fst-italic text-secondary small">"Proin nulla mauris et volutpat adipiscing suspendisse vehicula blandit sagittis orci etiam morbi elit etiam semper eu lacus pretium hac nisl leo amet ullamcorper."</p>
+              </div>
+              <div class="d-flex align-items-center mt-3 pt-3 border-top">
+                <img src="/images/avatar-1.jpg" alt="Emily" class="rounded-circle me-3" style="width: 48px; height: 48px; object-fit: cover;">
+                <div>
+                  <h4 class="h6 font-serif fw-bold text-dark mb-0">EMILY HUNT</h4>
+                  <span class="small text-muted" style="font-size: 10px;">Leisure Traveler</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="p-4 rounded-3 border bg-light h-100 d-flex flex-column justify-content-between">
+              <div>
+                <div class="text-warning mb-3">★★★★★</div>
+                <p class="fst-italic text-secondary small">"Proin nulla mauris et volutpat adipiscing suspendisse vehicula blandit sagittis orci etiam morbi elit etiam semper eu lacus pretium hac nisl leo amet ullamcorper."</p>
+              </div>
+              <div class="d-flex align-items-center mt-3 pt-3 border-top">
+                <img src="/images/avatar-2.jpg" alt="Morgan" class="rounded-circle me-3" style="width: 48px; height: 48px; object-fit: cover;">
+                <div>
+                  <h4 class="h6 font-serif fw-bold text-dark mb-0">MORGAN JONATHAN</h4>
+                  <span class="small text-muted" style="font-size: 10px;">Luxury Enthusiast</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+
+  <!-- ==========================================
+       TAB 2: ROOMS PAGE VIEW
+       ========================================== -->
+  <div id="tab-view-rooms" class="tab-content-view d-none">
+    <div class="page-header-banner" style="background-image: url('/images/about-room.jpg');">
+      <div class="page-header-overlay"></div>
+      <div class="container position-relative z-2 text-center text-white mt-5">
+        <span class="subtitle-gold text-white-50">ACCOMMODATION OPTIONS</span>
+        <h1 class="display-4 font-serif fw-bold">Rooms &amp; Accommodation</h1>
+        <p class="lead text-white-75 max-w-xl mx-auto small">
+          If you are looking for a home away from home, just walk in here. You can get both, an incredible and relaxing experience while you are on a holiday.
+        </p>
+      </div>
+    </div>
+
+    <section class="py-5 bg-light">
+      <div class="container py-4">
+        <div class="row g-4">
+          <!-- Room 1: Single -->
+          <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-3 overflow-hidden h-100 card-hover-lift">
+              <img src="/images/room-single.jpg" class="w-100 object-fit-cover" style="height: 300px;" alt="Single Room">
+              <div class="card-body p-4 d-flex flex-column justify-content-between">
+                <div>
+                  <h3 class="h3 font-serif fw-bold text-dark">Single Room</h3>
+                  <p class="text-secondary small">Our single rooms are complemented with modern and luxurious amenities for a wonderful stay.</p>
+                  <div class="row text-center py-3 border-top border-bottom my-3 g-2">
+                    <div class="col-4">
+                      <span class="d-block small text-muted text-uppercase" style="font-size: 10px;">Capacity</span>
+                      <strong class="small text-dark">1 Guest</strong>
+                    </div>
+                    <div class="col-4 border-start border-end">
+                      <span class="d-block small text-muted text-uppercase" style="font-size: 10px;">Size</span>
+                      <strong class="small text-dark">28 m²</strong>
+                    </div>
+                    <div class="col-4">
+                      <span class="d-block small text-muted text-uppercase" style="font-size: 10px;">Bed</span>
+                      <strong class="small text-dark">1 Single Bed</strong>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-resort-navy w-100" onclick="switchTab('pricing', 'single')">VIEW TARIFFS &amp; STAY OPTIONS</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Room 2: Double -->
+          <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-3 overflow-hidden h-100 card-hover-lift">
+              <img src="/images/room-double.jpg" class="w-100 object-fit-cover" style="height: 300px;" alt="Double Room">
+              <div class="card-body p-4 d-flex flex-column justify-content-between">
+                <div>
+                  <h3 class="h3 font-serif fw-bold text-dark">Double Room</h3>
+                  <p class="text-secondary small">We offer double rooms designed with a vibrant touch to enhance your spirits for a happening holiday.</p>
+                  <div class="row text-center py-3 border-top border-bottom my-3 g-2">
+                    <div class="col-4">
+                      <span class="d-block small text-muted text-uppercase" style="font-size: 10px;">Capacity</span>
+                      <strong class="small text-dark">2 Guests</strong>
+                    </div>
+                    <div class="col-4 border-start border-end">
+                      <span class="d-block small text-muted text-uppercase" style="font-size: 10px;">Size</span>
+                      <strong class="small text-dark">38 m²</strong>
+                    </div>
+                    <div class="col-4">
+                      <span class="d-block small text-muted text-uppercase" style="font-size: 10px;">Bed</span>
+                      <strong class="small text-dark">1 King Bed</strong>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-resort-navy w-100" onclick="switchTab('pricing', 'double')">VIEW TARIFFS &amp; STAY OPTIONS</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Room 3: Suite -->
+          <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-3 overflow-hidden h-100 card-hover-lift">
+              <img src="/images/room-suite.jpg" class="w-100 object-fit-cover" style="height: 300px;" alt="Suite Room">
+              <div class="card-body p-4 d-flex flex-column justify-content-between">
+                <div>
+                  <h3 class="h3 font-serif fw-bold text-dark">Suite Room</h3>
+                  <p class="text-secondary small">This is the second-highest ranked room in our hotel that offers luxury with the most advanced amenities.</p>
+                  <div class="row text-center py-3 border-top border-bottom my-3 g-2">
+                    <div class="col-4">
+                      <span class="d-block small text-muted text-uppercase" style="font-size: 10px;">Capacity</span>
+                      <strong class="small text-dark">2 Guests</strong>
+                    </div>
+                    <div class="col-4 border-start border-end">
+                      <span class="d-block small text-muted text-uppercase" style="font-size: 10px;">Size</span>
+                      <strong class="small text-dark">54 m²</strong>
+                    </div>
+                    <div class="col-4">
+                      <span class="d-block small text-muted text-uppercase" style="font-size: 10px;">Bed</span>
+                      <strong class="small text-dark">1 Super King Bed</strong>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-resort-navy w-100" onclick="switchTab('pricing', 'suite')">VIEW TARIFFS &amp; STAY OPTIONS</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Room 4: Family -->
+          <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-3 overflow-hidden h-100 card-hover-lift">
+              <img src="/images/room-family.jpg" class="w-100 object-fit-cover" style="height: 300px;" alt="Family Room">
+              <div class="card-body p-4 d-flex flex-column justify-content-between">
+                <div>
+                  <h3 class="h3 font-serif fw-bold text-dark">Family Room</h3>
+                  <p class="text-secondary small">Wish to live like a king? Here's the top family rooms where you can spend the best days of your life with your family.</p>
+                  <div class="row text-center py-3 border-top border-bottom my-3 g-2">
+                    <div class="col-4">
+                      <span class="d-block small text-muted text-uppercase" style="font-size: 10px;">Capacity</span>
+                      <strong class="small text-dark">4 Guests</strong>
+                    </div>
+                    <div class="col-4 border-start border-end">
+                      <span class="d-block small text-muted text-uppercase" style="font-size: 10px;">Size</span>
+                      <strong class="small text-dark">72 m²</strong>
+                    </div>
+                    <div class="col-4">
+                      <span class="d-block small text-muted text-uppercase" style="font-size: 10px;">Bed</span>
+                      <strong class="small text-dark">2 Queen Beds</strong>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-resort-navy w-100" onclick="switchTab('pricing', 'family')">VIEW TARIFFS &amp; STAY OPTIONS</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+
+  <!-- ==========================================
+       TAB 3: PRICING PAGE VIEW
+       ========================================== -->
+  <div id="tab-view-pricing" class="tab-content-view d-none">
+    <div class="page-header-banner" style="background-image: url('/images/pricing-header.jpg');">
+      <div class="page-header-overlay"></div>
+      <div class="container position-relative z-2 text-center text-white mt-5">
+        <span class="subtitle-gold text-white-50">EXCLUSIVE RATES</span>
+        <h1 class="display-4 font-serif fw-bold">Room Tariffs &amp; Stay Options</h1>
+        <p class="lead text-white-75 max-w-xl mx-auto small">
+          Experience absolute transparent pricing with tailored packages. Choose between a cozy night stay or maximize your luxury with a flexible 24-hour full-day experience.
+        </p>
+      </div>
+    </div>
+
+    <section class="py-5 bg-light">
+      <div class="container py-4">
+        <!-- Duration Toggle -->
+        <div class="d-flex flex-column align-items-center mb-5">
+          <span class="subtitle-gold mb-3">SELECT YOUR STAY DURATION</span>
+          <div class="toggle-switch-container">
+            <div id="toggle-bg" class="toggle-slider-bg"></div>
+            <button id="btn-period-night" class="toggle-slider-btn active" onclick="setBillingPeriod('night')">ONE NIGHT</button>
+            <button id="btn-period-day" class="toggle-slider-btn" onclick="setBillingPeriod('day')">FULL DAY (24H FLEX)</button>
+          </div>
+          <p id="period-description" class="small text-muted text-center max-w-md mt-3 mb-0">
+            Standard Stay: Check-in from 2:00 PM, Check-out by 11:00 AM standard resort hours.
+          </p>
+        </div>
+
+        <!-- Pricing Cards Grid -->
+        <div class="row g-4">
+          <!-- Single Card -->
+          <div class="col-lg-3 col-md-6">
+            <div id="pricing-single" class="card border-0 shadow-sm rounded-3 overflow-hidden h-100 card-hover-lift d-flex flex-column justify-content-between">
+              <div>
+                <img src="/images/room-single.jpg" class="w-100 object-fit-cover" style="height: 180px;" alt="Single Room">
+                <div class="card-body p-4">
+                  <h3 class="h4 font-serif fw-bold text-dark mb-1">Single Room</h3>
+                  <div class="h3 font-serif fw-bold text-navy my-2" id="price-val-single">LKR 10,000</div>
+                  <span class="small text-warning text-uppercase font-sans fw-bold d-block mb-3" id="price-duration-single">Per Night Stay</span>
+                  <p class="small text-muted mb-4">Perfect for solo travelers seeking elegance and modern comforts.</p>
+
+                  <h6 class="small text-uppercase fw-bold text-dark mb-3">What's Included:</h6>
+                  <ul class="list-unstyled mb-0" id="perk-list-single"></ul>
+                </div>
+              </div>
+              <div class="p-4 pt-0">
+                <button class="btn btn-resort-navy w-100" onclick="openBookingModal('single', 'night')">BOOK NOW</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Double Card -->
+          <div class="col-lg-3 col-md-6">
+            <div id="pricing-double" class="card border-0 shadow-sm rounded-3 overflow-hidden h-100 card-hover-lift d-flex flex-column justify-content-between">
+              <div>
+                <img src="/images/room-double.jpg" class="w-100 object-fit-cover" style="height: 180px;" alt="Double Room">
+                <div class="card-body p-4">
+                  <h3 class="h4 font-serif fw-bold text-dark mb-1">Double Room</h3>
+                  <div class="h3 font-serif fw-bold text-navy my-2" id="price-val-double">LKR 20,000</div>
+                  <span class="small text-warning text-uppercase font-sans fw-bold d-block mb-3" id="price-duration-double">Per Night Stay</span>
+                  <p class="small text-muted mb-4">Designed for couples, blending vibrant decor with premium amenities.</p>
+
+                  <h6 class="small text-uppercase fw-bold text-dark mb-3">What's Included:</h6>
+                  <ul class="list-unstyled mb-0" id="perk-list-double"></ul>
+                </div>
+              </div>
+              <div class="p-4 pt-0">
+                <button class="btn btn-resort-navy w-100" onclick="openBookingModal('double', 'night')">BOOK NOW</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Suite Card -->
+          <div class="col-lg-3 col-md-6">
+            <div id="pricing-suite" class="card border border-warning shadow rounded-3 overflow-hidden h-100 card-hover-lift d-flex flex-column justify-content-between position-relative">
+              <span class="badge bg-warning text-dark position-absolute top-0 start-0 m-3 px-3 py-2 rounded-pill font-sans text-uppercase fw-bold" style="font-size: 9px;">Luxury Choice</span>
+              <div>
+                <img src="/images/room-suite.jpg" class="w-100 object-fit-cover" style="height: 180px;" alt="Suite Room">
+                <div class="card-body p-4">
+                  <h3 class="h4 font-serif fw-bold text-dark mb-1">Suite Room</h3>
+                  <div class="h3 font-serif fw-bold text-navy my-2" id="price-val-suite">LKR 50,000</div>
+                  <span class="small text-warning text-uppercase font-sans fw-bold d-block mb-3" id="price-duration-suite">Per Night Stay</span>
+                  <p class="small text-muted mb-4">A gorgeous luxury suite offering sweeping ocean views and supreme comfort.</p>
+
+                  <h6 class="small text-uppercase fw-bold text-dark mb-3">What's Included:</h6>
+                  <ul class="list-unstyled mb-0" id="perk-list-suite"></ul>
+                </div>
+              </div>
+              <div class="p-4 pt-0">
+                <button class="btn btn-resort-gold w-100" onclick="openBookingModal('suite', 'night')">BOOK NOW</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Family Card -->
+          <div class="col-lg-3 col-md-6">
+            <div id="pricing-family" class="card border-0 shadow-sm rounded-3 overflow-hidden h-100 card-hover-lift d-flex flex-column justify-content-between">
+              <div>
+                <img src="/images/room-family.jpg" class="w-100 object-fit-cover" style="height: 180px;" alt="Family Room">
+                <div class="card-body p-4">
+                  <h3 class="h4 font-serif fw-bold text-dark mb-1">Family Room</h3>
+                  <div class="h3 font-serif fw-bold text-navy my-2" id="price-val-family">LKR 100,000</div>
+                  <span class="small text-warning text-uppercase font-sans fw-bold d-block mb-3" id="price-duration-family">Per Night Stay</span>
+                  <p class="small text-muted mb-4">Our signature expansive residency, allowing families to live like royalty.</p>
+
+                  <h6 class="small text-uppercase fw-bold text-dark mb-3">What's Included:</h6>
+                  <ul class="list-unstyled mb-0" id="perk-list-family"></ul>
+                </div>
+              </div>
+              <div class="p-4 pt-0">
+                <button class="btn btn-resort-navy w-100" onclick="openBookingModal('family', 'night')">BOOK NOW</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+
+  <!-- ==========================================
+       TAB 4: AMENITIES PAGE VIEW
+       ========================================== -->
+  <div id="tab-view-amenities" class="tab-content-view d-none">
+    <div class="page-header-banner" style="background-image: url('/images/hero-bg.jpg');">
+      <div class="page-header-overlay"></div>
+      <div class="container position-relative z-2 text-center text-white mt-5">
+        <span class="subtitle-gold text-white-50">RESORT FACILITIES</span>
+        <h1 class="display-4 font-serif fw-bold">Amenities &amp; Wellness</h1>
+        <p class="lead text-white-75 max-w-xl mx-auto small">
+          We offer a comprehensive range of premium amenities and experiences under one roof to make your stay soothing and unforgettable.
+        </p>
+      </div>
+    </div>
+
+    <section class="py-5 bg-light">
+      <div class="container py-4">
+        <!-- Expandable Detail Card Container -->
+        <div id="amenity-detail-panel" class="card border-warning shadow-lg rounded-3 p-4 mb-5 bg-white d-none">
+          <div class="row align-items-center g-4">
+            <div class="col-md-5">
+              <img id="amenity-detail-img" src="" class="img-fluid rounded-3 w-100 object-fit-cover" style="height: 280px;" alt="Detail">
+            </div>
+            <div class="col-md-7">
+              <span class="subtitle-gold">FEATURE DETAILS</span>
+              <h3 class="h3 font-serif fw-bold text-dark mb-3" id="amenity-detail-title"></h3>
+              <p class="text-secondary small mb-4" id="amenity-detail-desc"></p>
+              <ul class="list-unstyled mb-4" id="amenity-detail-highlights"></ul>
+              <div class="d-flex gap-2">
+                <button class="btn btn-resort-navy" onclick="openBookingModal()">BOOK THIS EXPERIENCE</button>
+                <button class="btn btn-outline-secondary" onclick="closeAmenityDetail()">CLOSE</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-4">
+          <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-3 p-4 card-hover-lift cursor-pointer h-100" onclick="openAmenityDetail(1)">
+              <img src="/images/amenity-pool.jpg" class="rounded-3 w-100 object-fit-cover mb-3" style="height: 200px;" alt="Pool">
+              <h4 class="h5 font-serif fw-bold">An Infinite-edge Pool</h4>
+              <p class="small text-muted mb-0">Experience the joy of swimming in our infinity-edge pool with sunset views.</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-3 p-4 card-hover-lift cursor-pointer h-100" onclick="openAmenityDetail(2)">
+              <img src="/images/amenity-spa.jpg" class="rounded-3 w-100 object-fit-cover mb-3" style="height: 200px;" alt="Spa">
+              <h4 class="h5 font-serif fw-bold">An Iconic Spa</h4>
+              <p class="small text-muted mb-0">Set forth on an exquisite wellness journey to refresh and rejuvenate.</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-3 p-4 card-hover-lift cursor-pointer h-100" onclick="openAmenityDetail(3)">
+              <img src="/images/amenity-rooms.jpg" class="rounded-3 w-100 object-fit-cover mb-3" style="height: 200px;" alt="Rooms">
+              <h4 class="h5 font-serif fw-bold">Luxurious Rooms</h4>
+              <p class="small text-muted mb-0">Crafted with modern features, automated ambient controls, and plush linens.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+
+  <!-- ==========================================
+       TAB 5: CONTACT PAGE VIEW
+       ========================================== -->
+  <div id="tab-view-contact" class="tab-content-view d-none">
+    <div class="page-header-banner" style="background-image: url('/images/hero-bg.jpg');">
+      <div class="page-header-overlay"></div>
+      <div class="container position-relative z-2 text-center text-white mt-5">
+        <span class="subtitle-gold text-white-50">GET IN TOUCH</span>
+        <h1 class="display-4 font-serif fw-bold">Contact Us</h1>
+        <p class="lead text-white-75 max-w-xl mx-auto small">
+          Do you want to enquire about our pricing, current offers and arrangements we can help you with? Give us a call or send in your concerns through the form below.
+        </p>
+      </div>
+    </div>
+
+    <section class="py-5 bg-white">
+      <div class="container py-4">
+        <div class="row g-5">
+          <!-- Office Details -->
+          <div class="col-lg-5">
+            <span class="subtitle-gold">OFFICE DETAILS</span>
+            <h2 class="h2 font-serif fw-bold text-dark mb-4">Reception Desk</h2>
+            <div class="bg-warning mb-4" style="width: 50px; height: 2px;"></div>
+
+            <div class="d-flex mb-4">
+              <div class="p-3 bg-light rounded-3 text-warning me-3">📍</div>
+              <div>
+                <h5 class="h6 font-serif fw-bold mb-1">Reception Office</h5>
+                <p class="small text-secondary mb-0">2855 Beach Side Rd, Unawatuna,<br>Galle, Sri Lanka, 80000</p>
+              </div>
+            </div>
+
+            <div class="d-flex mb-4">
+              <div class="p-3 bg-light rounded-3 text-warning me-3">⏰</div>
+              <div>
+                <h5 class="h6 font-serif fw-bold mb-1">Reception Hours</h5>
+                <p class="small text-dark fw-bold mb-0">7:30 AM - 11:00 PM</p>
+              </div>
+            </div>
+
+            <div class="d-flex mb-4">
+              <div class="p-3 bg-light rounded-3 text-warning me-3">📞</div>
+              <div>
+                <h5 class="h6 font-serif fw-bold mb-1">Direct Contacts</h5>
+                <p class="small text-secondary mb-0">
+                  Phone: <strong>+94 717 224 755</strong><br>
+                  Email: <strong>shakirvta01@gmail.com</strong>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contact Form -->
+          <div class="col-lg-7">
+            <div class="p-4 p-md-5 rounded-3 bg-light border shadow-sm">
+              <div id="contact-success-msg" class="text-center py-5 d-none">
+                <div class="display-3 text-success mb-3">✓</div>
+                <h3 class="h3 font-serif fw-bold">Message Sent!</h3>
+                <p class="small text-muted mb-4">Thank you for contacting us. Our reception desk team will review your enquiry and get back to you shortly.</p>
+                <button class="btn btn-resort-navy" onclick="resetContactForm()">SEND ANOTHER MESSAGE</button>
+              </div>
+
+              <form id="contact-form" class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label small font-sans fw-bold text-uppercase text-secondary">Name *</label>
+                  <input type="text" id="contact-name" class="form-control font-sans" placeholder="Your Name" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small font-sans fw-bold text-uppercase text-secondary">Email *</label>
+                  <input type="email" id="contact-email" class="form-control font-sans" placeholder="Your Email Address" required>
+                </div>
+                <div class="col-12">
+                  <label class="form-label small font-sans fw-bold text-uppercase text-secondary">Subject *</label>
+                  <input type="text" id="contact-subject" class="form-control font-sans" placeholder="Reservation, Transport request, etc." required>
+                </div>
+                <div class="col-12">
+                  <label class="form-label small font-sans fw-bold text-uppercase text-secondary">Message</label>
+                  <textarea id="contact-message" class="form-control font-sans" rows="4" placeholder="Write your concerns here..."></textarea>
+                </div>
+                <div class="col-12">
+                  <button type="submit" class="btn btn-resort-navy w-100 py-3">SUBMIT MESSAGE</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Simulated Map Graphic -->
+        <div class="mt-5 rounded-3 overflow-hidden shadow-sm border">
+          <div class="bg-light p-3 border-bottom d-flex justify-content-between small text-muted">
+            <strong>📍 Hotel The Blue Moon (Sri Lanka)</strong>
+            <span>Unawatuna Beach Side, Galle</span>
+          </div>
+          <div class="position-relative bg-info-subtle d-flex align-items-center justify-content-center" style="height: 350px;">
+            <div class="text-center p-4 bg-white shadow rounded-3 border-start border-4 border-danger position-relative z-2">
+              <h5 class="h6 font-serif fw-bold mb-1">Hotel The Blue Moon</h5>
+              <span class="small text-warning">Galle, Sri Lanka ★ 4.8</span>
+              <div class="mt-2 small text-muted">2855 Beach Side Rd, Unawatuna</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+
+  <!-- ==========================================
+       GLOBAL FOOTER
+       ========================================== -->
+  <footer class="bg-white border-top">
+    <!-- Visual CTA Banner -->
+    <div class="position-relative py-5 text-white" style="background-color: var(--resort-blue-950);">
+      <div class="position-absolute inset-0 opacity-25 bg-cover bg-center" style="background-image: url('/images/about-room.jpg');"></div>
+      <div class="container position-relative z-2 text-center py-4">
+        <h2 class="display-6 font-serif fw-bold mb-3">
+          Plan an Unforgettable Experience in <br><span class="text-warning">Blue Moon Hotel !</span>
+        </h2>
+        <p class="small text-white-75 max-w-md mx-auto mb-4">
+          We can help you fit your stay and experience within your allotted budget.
+        </p>
+        <button class="btn btn-resort-gold px-4 py-3" onclick="switchTab('pricing')">RESERVE A ROOM NOW</button>
+      </div>
+    </div>
+
+    <!-- Links Footer -->
+    <div class="container py-5">
+      <div class="row g-4 small text-secondary">
+        <div class="col-lg-4">
+          <h5 class="h6 font-serif fw-bold text-dark mb-3">Travel &amp; Tourism</h5>
+          <p class="small leading-relaxed mb-0">Experience absolute coastal elegance at Hotel The Blue Moon. Nestled on the pristine sandy shores of Unawatuna, we offer bespoke seaside sanctuaries, fine global cuisine, and world-class spa wellness.</p>
+        </div>
+        <div class="col-lg-2 col-6">
+          <h5 class="h6 font-serif fw-bold text-dark mb-3">Navigation</h5>
+          <ul class="list-unstyled">
+            <li class="mb-2"><a class="text-secondary text-decoration-none cursor-pointer" onclick="switchTab('home')">Home</a></li>
+            <li class="mb-2"><a class="text-secondary text-decoration-none cursor-pointer" onclick="switchTab('rooms')">Rooms</a></li>
+            <li class="mb-2"><a class="text-secondary text-decoration-none cursor-pointer" onclick="switchTab('pricing')">Pricing</a></li>
+            <li class="mb-2"><a class="text-secondary text-decoration-none cursor-pointer" onclick="switchTab('amenities')">Amenities</a></li>
+            <li class="mb-2"><a class="text-secondary text-decoration-none cursor-pointer" onclick="switchTab('contact')">Contact</a></li>
+          </ul>
+        </div>
+        <div class="col-lg-3 col-6">
+          <h5 class="h6 font-serif fw-bold text-dark mb-3">Customer Support</h5>
+          <ul class="list-unstyled">
+            <li class="mb-2">Guest Support</li>
+            <li class="mb-2">Guest Feedback</li>
+            <li class="mb-2">FAQs</li>
+            <li class="mb-2">Special Offers</li>
+          </ul>
+        </div>
+        <div class="col-lg-3">
+          <h5 class="h6 font-serif fw-bold text-dark mb-3">Direct Contact</h5>
+          <p class="small mb-1">📍 Unawatuna, Galle, Sri Lanka</p>
+          <p class="small mb-1">📞 +94 717 224 755</p>
+          <p class="small mb-0">✉️ shakirvta01@gmail.com</p>
+        </div>
+      </div>
+
+      <div class="pt-4 mt-4 border-top d-flex flex-column flex-md-row justify-content-between align-items-center small text-muted">
+        <span>Copyright &copy; 2026 Hotel The Blue Moon | All Rights Reserved</span>
+        <span>Powered by Mohomed Shakir</span>
+      </div>
+    </div>
+  </footer>
+
+
+  <!-- ==========================================
+       LIGHTBOX MODAL
+       ========================================== -->
+  <div id="gallery-lightbox" class="lightbox-modal" onclick="closeLightbox()">
+    <div class="position-relative text-center p-3">
+      <img id="lightbox-img" src="" class="img-fluid rounded shadow-lg" style="max-height: 80vh;" alt="Enlarged">
+      <p id="lightbox-caption" class="text-white mt-3 font-sans small"></p>
+    </div>
+  </div>
+
+
+  <!-- ==========================================
+       BOOKING WIZARD MODAL
+       ========================================== -->
+  <div id="booking-modal" class="modal-backdrop-custom">
+    <div class="bg-white rounded-3 shadow-lg overflow-hidden w-100" style="max-width: 720px;">
+      <div class="p-4 bg-dark text-white d-flex justify-content-between align-items-center" style="background-color: var(--resort-blue-950) !important;">
+        <h4 class="h5 font-serif fw-bold mb-0">Hotel The Blue Moon Booking</h4>
+        <button class="btn-close btn-close-white" onclick="closeBookingModal()"></button>
+      </div>
+
+      <div class="p-4 p-md-5">
+        <!-- Step 1 Pane -->
+        <div id="booking-step-1" class="booking-step-pane">
+          <h5 class="h5 font-serif fw-bold mb-4">Select Dates &amp; Options</h5>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small font-sans fw-bold text-uppercase">Check-In Date</label>
+              <input type="date" id="booking-checkin" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small font-sans fw-bold text-uppercase">Check-Out Date</label>
+              <input type="date" id="booking-checkout" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small font-sans fw-bold text-uppercase">Room Type</label>
+              <select id="booking-room-type" class="form-select">
+                <option value="single">Single Room (LKR 10,000 / Night)</option>
+                <option value="double">Double Room (LKR 20,000 / Night)</option>
+                <option value="suite">Suite Room (LKR 50,000 / Night)</option>
+                <option value="family">Family Room (LKR 100,000 / Night)</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small font-sans fw-bold text-uppercase">Stay Duration</label>
+              <select id="booking-stay-type" class="form-select">
+                <option value="night">One Night Stay</option>
+                <option value="day">Full Day 24H Flex Stay</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Price Summary Preview Box -->
+          <div class="bg-light p-3 rounded-3 mt-4 border">
+            <div class="d-flex justify-content-between small text-muted mb-1">
+              <span>Duration:</span>
+              <strong id="sum-nights">0 Nights</strong>
+            </div>
+            <div class="d-flex justify-content-between small text-muted mb-1">
+              <span>Subtotal:</span>
+              <strong id="sum-subtotal">LKR 0</strong>
+            </div>
+            <div class="d-flex justify-content-between small text-muted mb-1">
+              <span>Taxes &amp; Fees (18%):</span>
+              <strong id="sum-tax">LKR 0</strong>
+            </div>
+            <hr class="my-2">
+            <div class="d-flex justify-content-between h6 fw-bold text-dark mb-0">
+              <span>Total Amount:</span>
+              <span id="sum-total" class="text-warning">LKR 0</span>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end mt-4">
+            <button class="btn btn-resort-navy" onclick="handleBookingNext()">NEXT: GUEST DETAILS →</button>
+          </div>
+        </div>
+
+        <!-- Step 2 Pane -->
+        <div id="booking-step-2" class="booking-step-pane d-none">
+          <h5 class="h5 font-serif fw-bold mb-4">Guest Information</h5>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small font-sans fw-bold text-uppercase">First Name *</label>
+              <input type="text" id="booking-fname" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small font-sans fw-bold text-uppercase">Last Name *</label>
+              <input type="text" id="booking-lname" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small font-sans fw-bold text-uppercase">Email *</label>
+              <input type="email" id="booking-email" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small font-sans fw-bold text-uppercase">Phone *</label>
+              <input type="tel" id="booking-phone" class="form-control" required>
+            </div>
+          </div>
+          <div class="d-flex justify-content-between mt-4">
+            <button class="btn btn-outline-secondary" onclick="handleBookingBack()">← BACK</button>
+            <button class="btn btn-resort-gold" onclick="handleBookingNext()">CONFIRM RESERVATION</button>
+          </div>
+        </div>
+
+        <!-- Step 3 Pane -->
+        <div id="booking-step-3" class="booking-step-pane d-none text-center py-4">
+          <div class="display-3 text-success mb-3">✓</div>
+          <h4 class="h4 font-serif fw-bold">Reservation Confirmed!</h4>
+          <p class="small text-muted mb-3">Your booking reference number is:</p>
+          <div class="h5 font-monospace text-warning bg-light p-3 rounded border d-inline-block px-4 mb-4" id="booking-ref-display">BMN-000000-2026</div>
+          <p class="small text-secondary max-w-md mx-auto mb-4">We have recorded your reservation. Our reception team will reach out via email/phone shortly.</p>
+          <button class="btn btn-resort-navy" onclick="closeBookingModal()">DONE</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Bootstrap 5 JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Application Logic JS -->
+  <script type="module" src="/js/app.js"></script>
+</body>
 </html>
