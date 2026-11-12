@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS customer (
     phone TEXT NOT NULL,
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -88,6 +89,7 @@ CREATE TABLE IF NOT EXISTS employee (
     phone TEXT NOT NULL,
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -580,7 +582,7 @@ BEGIN
         ORDER BY lh.login_time DESC
     ) INTO v_logins
     FROM (
-        SELECT * FROM login_history ORDER BY login_time DESC LIMIT 20
+        SELECT * FROM login_history ORDER BY login_time DESC LIMIT 25
     ) lh
     JOIN employee e ON lh.employee_id = e.employee_id;
 
@@ -589,10 +591,14 @@ BEGIN
             'employee_id', e.employee_id,
             'name', e.name,
             'national_id', e.national_id,
+            'address', e.address,
             'designation', e.designation,
+            'date_of_birth', e.date_of_birth,
             'email', e.email,
             'phone', e.phone,
-            'basic_salary', s.basic_salary
+            'username', e.username,
+            'is_active', e.is_active,
+            'basic_salary', COALESCE(s.basic_salary, 0)
         )
         ORDER BY e.employee_id
     ) INTO v_staff
@@ -615,6 +621,16 @@ BEGIN
 
     SELECT jsonb_agg(
         jsonb_build_object(
+            'room_no', rp.room_no,
+            'period', rp.period,
+            'price', rp.price
+        )
+        ORDER BY rp.room_no, rp.period
+    ) INTO v_pricing
+    FROM room_pricing rp;
+
+    SELECT jsonb_agg(
+        jsonb_build_object(
             'total_rooms', (SELECT COUNT(*) FROM room),
             'available_rooms', (SELECT COUNT(*) FROM room WHERE status = 'available'),
             'occupied_rooms', (SELECT COUNT(*) FROM room WHERE status = 'occupied'),
@@ -632,7 +648,8 @@ BEGIN
         'invoices', COALESCE(v_invoices, '[]'::jsonb),
         'logins', COALESCE(v_logins, '[]'::jsonb),
         'staff', COALESCE(v_staff, '[]'::jsonb),
-        'customers', COALESCE(v_customers, '[]'::jsonb)
+        'customers', COALESCE(v_customers, '[]'::jsonb),
+        'pricing', COALESCE(v_pricing, '[]'::jsonb)
     );
 END;
 $function$;
@@ -710,3 +727,220 @@ BEGIN
     );
 END;
 $function$;
+
+-- ============================================================================
+-- MANAGER OPERATIONS & CRUD RPCs (SRS Specifications: Pages 70 - 94)
+-- ============================================================================
+
+-- RPC 9: Add Employee (SRS Page 88-94)
+CREATE OR REPLACE FUNCTION public.add_employee(
+    p_name TEXT,
+    p_national_id TEXT,
+    p_address TEXT,
+    p_designation TEXT,
+    p_date_of_birth DATE,
+    p_email TEXT,
+    p_phone TEXT,
+    p_username TEXT,
+    p_password TEXT,
+    p_basic_salary NUMERIC DEFAULT 50000
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_new_id BIGINT;
+BEGIN
+    IF p_name IS NULL OR p_username IS NULL OR p_password IS NULL OR p_designation IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Name, designation, username, and password are required.');
+    END IF;
+
+    INSERT INTO employee (
+        name, national_id, address, designation, date_of_birth, email, phone, username, password_hash
+    ) VALUES (
+        p_name,
+        COALESCE(p_national_id, 'NIC-' || floor(random() * 900000000 + 100000000)::text),
+        COALESCE(p_address, 'Colombo, Sri Lanka'),
+        p_designation,
+        COALESCE(p_date_of_birth, '1995-01-01'::date),
+        COALESCE(p_email, lower(regexp_replace(p_name, '\s+', '.', 'g')) || '@bluemoon.lk'),
+        COALESCE(p_phone, '+94 77 123 4567'),
+        lower(trim(p_username)),
+        crypt(p_password, gen_salt('bf'))
+    ) RETURNING employee_id INTO v_new_id;
+
+    INSERT INTO salary (employee_id, basic_salary)
+    VALUES (v_new_id, COALESCE(p_basic_salary, 50000))
+    ON CONFLICT (employee_id) DO UPDATE SET basic_salary = EXCLUDED.basic_salary;
+
+    RETURN jsonb_build_object('success', true, 'employee_id', v_new_id, 'message', 'Employee created successfully.');
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$;
+
+-- RPC 10: Update Employee (SRS Page 88-94)
+CREATE OR REPLACE FUNCTION public.update_employee(
+    p_employee_id BIGINT,
+    p_name TEXT DEFAULT NULL,
+    p_national_id TEXT DEFAULT NULL,
+    p_address TEXT DEFAULT NULL,
+    p_designation TEXT DEFAULT NULL,
+    p_date_of_birth DATE DEFAULT NULL,
+    p_email TEXT DEFAULT NULL,
+    p_phone TEXT DEFAULT NULL,
+    p_username TEXT DEFAULT NULL,
+    p_password TEXT DEFAULT NULL,
+    p_basic_salary NUMERIC DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    IF p_employee_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Employee ID is required.');
+    END IF;
+
+    UPDATE employee
+    SET name = COALESCE(p_name, name),
+        national_id = COALESCE(p_national_id, national_id),
+        address = COALESCE(p_address, address),
+        designation = COALESCE(p_designation, designation),
+        date_of_birth = COALESCE(p_date_of_birth, date_of_birth),
+        email = COALESCE(p_email, email),
+        phone = COALESCE(p_phone, phone),
+        username = COALESCE(lower(trim(p_username)), username),
+        password_hash = CASE 
+            WHEN p_password IS NOT NULL AND length(trim(p_password)) > 0 
+            THEN crypt(p_password, gen_salt('bf')) 
+            ELSE password_hash 
+        END
+    WHERE employee_id = p_employee_id;
+
+    IF p_basic_salary IS NOT NULL THEN
+        INSERT INTO salary (employee_id, basic_salary)
+        VALUES (p_employee_id, p_basic_salary)
+        ON CONFLICT (employee_id) DO UPDATE SET basic_salary = EXCLUDED.basic_salary;
+    END IF;
+
+    RETURN jsonb_build_object('success', true, 'message', 'Employee updated successfully.');
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$;
+
+-- RPC 11: Remove / Deactivate Employee (SRS Page 6 & 88)
+CREATE OR REPLACE FUNCTION public.remove_employee(
+    p_employee_id BIGINT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    IF p_employee_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Employee ID is required.');
+    END IF;
+
+    IF p_employee_id = 1 THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Cannot remove General Manager root account.');
+    END IF;
+
+    UPDATE employee
+    SET is_active = false
+    WHERE employee_id = p_employee_id;
+
+    RETURN jsonb_build_object('success', true, 'message', 'Employee removed successfully.');
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$;
+
+-- RPC 12: Update Employee Salary (SRS Page 84-87)
+CREATE OR REPLACE FUNCTION public.update_employee_salary(
+    p_employee_id BIGINT,
+    p_basic_salary NUMERIC
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    INSERT INTO salary (employee_id, basic_salary)
+    VALUES (p_employee_id, p_basic_salary)
+    ON CONFLICT (employee_id) DO UPDATE SET basic_salary = EXCLUDED.basic_salary;
+
+    RETURN jsonb_build_object('success', true, 'message', 'Salary updated successfully.');
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$;
+
+-- RPC 13: Update Room Pricing (SRS Page 80-83)
+CREATE OR REPLACE FUNCTION public.update_room_pricing(
+    p_room_no TEXT,
+    p_period TEXT,
+    p_price NUMERIC
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    UPDATE room_pricing
+    SET price = p_price
+    WHERE room_no = p_room_no AND period = p_period;
+
+    RETURN jsonb_build_object('success', true, 'message', 'Room pricing updated successfully.');
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$;
+
+-- RPC 14: Manage Customer Details (SRS Page 74-80)
+CREATE OR REPLACE FUNCTION public.manage_customer(
+    p_action TEXT,
+    p_customer_id BIGINT DEFAULT NULL,
+    p_name TEXT DEFAULT NULL,
+    p_national_id TEXT DEFAULT NULL,
+    p_address TEXT DEFAULT NULL,
+    p_email TEXT DEFAULT NULL,
+    p_phone TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_new_id BIGINT;
+BEGIN
+    IF p_action = 'add' THEN
+        INSERT INTO customer (name, national_id, address, email, phone)
+        VALUES (
+            p_name,
+            COALESCE(p_national_id, 'NIC-' || floor(random() * 900000000 + 100000000)::text),
+            COALESCE(p_address, 'Colombo, Sri Lanka'),
+            COALESCE(p_email, lower(regexp_replace(p_name, '\s+', '.', 'g')) || '@guest.lk'),
+            p_phone
+        ) RETURNING customer_id INTO v_new_id;
+
+        RETURN jsonb_build_object('success', true, 'customer_id', v_new_id, 'message', 'Customer registered successfully.');
+    ELSIF p_action = 'update' THEN
+        UPDATE customer
+        SET name = COALESCE(p_name, name),
+            national_id = COALESCE(p_national_id, national_id),
+            address = COALESCE(p_address, address),
+            email = COALESCE(p_email, email),
+            phone = COALESCE(p_phone, phone)
+        WHERE customer_id = p_customer_id;
+
+        RETURN jsonb_build_object('success', true, 'message', 'Customer details updated successfully.');
+    ELSE
+        RETURN jsonb_build_object('success', false, 'error', 'Invalid action.');
+    END IF;
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$;

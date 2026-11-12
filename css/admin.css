@@ -290,6 +290,26 @@ body.admin-body {
   letter-spacing: 0.1em;
 }
 
+/* Manager Sub-Navigation Pills */
+#managerSubNav .nav-link {
+  color: #475569;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+}
+
+#managerSubNav .nav-link:hover {
+  background-color: #f1f5f9;
+  color: var(--resort-blue-950);
+}
+
+#managerSubNav .nav-link.active {
+  background-color: var(--resort-blue-950);
+  color: var(--resort-gold-300);
+  box-shadow: 0 4px 12px rgba(11, 25, 44, 0.15);
+}
+
 /* Print Handling */
 @media print {
   body * {

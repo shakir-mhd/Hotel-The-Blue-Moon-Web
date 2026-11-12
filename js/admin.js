@@ -11,6 +11,7 @@ const adminState = {
   staffUser: null,
   selectedPosition: null,
   activeTab: 'room-rack',
+  managerSubSection: 'staff',
   roomFilter: 'all',
   revenueMasked: false,
   calculatedWalkinTotal: 0,
@@ -22,7 +23,8 @@ const adminState = {
     invoices: [],
     logins: [],
     staff: [],
-    customers: []
+    customers: [],
+    pricing: []
   }
 };
 
@@ -95,6 +97,13 @@ window.selectStaffPosition = function(position, defaultUser, defaultPass) {
   if (userField && defaultUser) userField.value = defaultUser;
   if (passField && defaultPass) passField.value = defaultPass;
 
+  // CRITICAL FIX: Ensure submit button is enabled and not stuck on "VERIFYING CREDENTIALS..."
+  const submitBtn = document.getElementById('login-submit-btn');
+  if (submitBtn) {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = `SIGN IN AS <span id="login-btn-role-label">${position.toUpperCase()}</span>`;
+  }
+
   // Hide selector step, display login form
   document.getElementById('position-selection-step')?.classList.add('d-none');
   document.getElementById('position-login-step')?.classList.remove('d-none');
@@ -114,6 +123,12 @@ window.resetPositionSelection = function() {
   const passField = document.getElementById('login-password');
   if (userField) userField.value = '';
   if (passField) passField.value = '';
+
+  const submitBtn = document.getElementById('login-submit-btn');
+  if (submitBtn) {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'SIGN IN';
+  }
 
   if (window.lucide) window.lucide.createIcons();
 };
@@ -162,6 +177,10 @@ async function handleLoginSubmit(e) {
     // Login successful
     adminState.staffUser = data;
     sessionStorage.setItem('blue_moon_staff', JSON.stringify(data));
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = `SIGN IN AS ${(adminState.selectedPosition || 'STAFF').toUpperCase()}`;
+    }
     showDashboardView();
     showToast(`Welcome back, ${data.name}!`);
 
@@ -183,6 +202,12 @@ window.handleStaffLogout = function() {
   sessionStorage.removeItem('blue_moon_staff');
   adminState.staffUser = null;
   adminState.selectedPosition = null;
+
+  const submitBtn = document.getElementById('login-submit-btn');
+  if (submitBtn) {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'SIGN IN';
+  }
 
   document.getElementById('admin-dashboard-view')?.classList.add('d-none');
   document.getElementById('admin-auth-view')?.classList.remove('d-none');
@@ -275,7 +300,7 @@ function buildRoleNavigation(isManager, isReception, isRoomKeeper) {
       </li>
     `;
   } else {
-    // General Manager Role (User Guide Page 7)
+    // General Manager Role (User Guide Page 7 & SRS 70-94)
     defaultTab = 'manager';
     tabsHtml = `
       <li class="nav-item">
@@ -364,6 +389,8 @@ window.loadDashboardData = async function() {
       renderHousekeepingQueue(data.rooms);
       renderInvoices(data.invoices);
       renderStaffAndLogins(data.staff, data.logins);
+      renderSalaries(data.staff);
+      renderPricingTable(data.pricing);
       renderCustomers(data.customers);
       if (window.lucide) window.lucide.createIcons();
     }
@@ -383,7 +410,7 @@ function renderMetrics(stats) {
   if (occElem) occElem.textContent = stats.occupied_rooms ?? 0;
   if (maintElem) maintElem.textContent = stats.maintenance_rooms ?? 0;
 
-  // Role-Specific 4th Metric: Ensure strict confidentiality of total hotel revenue
+  // Role-Specific 4th Metric: Ensure strict confidentiality of hotel financial revenue
   const user = adminState.staffUser || {};
   const designation = (user.designation || '').toLowerCase();
   const isManager = designation.includes('manager') || designation.includes('admin');
@@ -394,7 +421,7 @@ function renderMetrics(stats) {
   const iconContainer = document.getElementById('stat-kpi-4-icon-container');
 
   if (isRoomKeeper) {
-    // Housekeeping: Display sanitation progress & turnover readiness
+    // Room Keeper: Display turnover readiness rate instead of private revenues
     const totalRooms = stats.total_rooms ?? 6;
     const maintenanceRooms = stats.maintenance_rooms ?? 0;
     const cleanRooms = Math.max(0, totalRooms - maintenanceRooms);
@@ -458,7 +485,7 @@ window.toggleRevenuePrivacy = function() {
 };
 
 // =============================================================================
-// 4. ROOM RACK & LIVE CHECKOUT (User Guide Page 5 + Interactive Filter)
+// 4. ROOM RACK & LIVE CHECKOUT (With Strict Role Privileges)
 // =============================================================================
 
 // Live Filter Selector for Room Rack
@@ -526,11 +553,18 @@ function renderRoomRack(rooms) {
     family: "Royal Family Residence"
   };
 
+  const user = adminState.staffUser || {};
+  const designation = (user.designation || '').toLowerCase();
+  const isManager = designation.includes('manager') || designation.includes('admin');
+  const isRoomKeeper = designation.includes('room') || designation.includes('keeper') || designation.includes('housekeeping');
+  const isReception = designation.includes('reception') || (!isManager && !isRoomKeeper);
+
   container.innerHTML = filteredRooms.map(room => {
     const status = room.status || 'available';
     const isOccupied = status === 'occupied';
     const isMaintenance = status === 'maintenance';
     const isCleaning = status === 'cleaning';
+    const isAvailable = status === 'available';
     const currentBooking = room.current_booking;
 
     let badgeClass = 'badge-available';
@@ -544,6 +578,93 @@ function renderRoomRack(rooms) {
     } else if (isCleaning) {
       badgeClass = 'badge-cleaning';
       badgeText = 'Cleaning';
+    }
+
+    // Role-specific action block: Principle of Least Privilege
+    let actionBlock = '';
+    if (isRoomKeeper) {
+      // Room Keeper ONLY does cleaning workflow - CANNOT occupy or release rooms arbitrarily
+      if (isMaintenance) {
+        actionBlock = `
+          <div class="pt-3 border-top">
+            <button class="btn btn-warning text-dark fw-bold w-100 d-flex align-items-center justify-content-center gap-2 py-2" onclick="setRoomStatusLive('${room.room_no}', 'cleaning')">
+              <i data-lucide="play" style="width: 14px;"></i> Start Cleaning
+            </button>
+          </div>
+        `;
+      } else if (isCleaning) {
+        actionBlock = `
+          <div class="pt-3 border-top">
+            <button class="btn btn-success fw-bold w-100 d-flex align-items-center justify-content-center gap-2 py-2" onclick="setRoomStatusLive('${room.room_no}', 'available')">
+              <i data-lucide="check-check" style="width: 14px;"></i> Mark Cleaned &amp; Ready
+            </button>
+          </div>
+        `;
+      } else if (isOccupied) {
+        actionBlock = `
+          <div class="pt-3 border-top text-center">
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle py-2 px-3 w-100 d-flex align-items-center justify-content-center gap-1">
+              <i data-lucide="lock" style="width: 13px;"></i> In-Use (Guest In Residence)
+            </span>
+          </div>
+        `;
+      } else {
+        actionBlock = `
+          <div class="pt-3 border-top text-center">
+            <span class="badge bg-success-subtle text-success border border-success-subtle py-2 px-3 w-100 d-flex align-items-center justify-content-center gap-1">
+              <i data-lucide="check" style="width: 13px;"></i> Clean &amp; Ready for Guests
+            </span>
+          </div>
+        `;
+      }
+    } else if (isReception) {
+      // Receptionist: Can execute checkout if occupied, or assign walk-in if available, or flag for cleaning
+      if (isOccupied && currentBooking) {
+        actionBlock = `
+          <div class="pt-3 border-top">
+            <button class="btn btn-outline-danger btn-sm w-100 fw-bold d-flex align-items-center justify-content-center gap-1" onclick="handleStayAction(${currentBooking.booking_id}, 'checked_out')">
+              <i data-lucide="log-out" style="width: 14px;"></i> Execute Checkout
+            </button>
+          </div>
+        `;
+      } else if (isAvailable) {
+        actionBlock = `
+          <div class="pt-3 border-top d-flex justify-content-between align-items-center gap-2">
+            <button class="btn btn-sm btn-dark text-warning w-100 fw-bold d-flex align-items-center justify-content-center gap-1" onclick="openWalkinModal()">
+              <i data-lucide="user-plus" style="width: 14px;"></i> Walk-in Check-in
+            </button>
+            <button class="btn btn-sm btn-outline-warning text-nowrap" onclick="setRoomStatusLive('${room.room_no}', 'maintenance')" title="Request Housekeeping">
+              <i data-lucide="sparkles" style="width: 14px;"></i> Clean
+            </button>
+          </div>
+        `;
+      } else {
+        actionBlock = `
+          <div class="pt-3 border-top text-center">
+            <span class="badge bg-light text-muted border py-2 w-100">
+              <i data-lucide="clock" style="width: 13px;"></i> Under Turnover by Housekeeping
+            </span>
+          </div>
+        `;
+      }
+    } else {
+      // General Manager (Executive): Retains full override control
+      actionBlock = `
+        <div class="pt-3 border-top d-flex justify-content-between align-items-center">
+          <span class="small text-muted" style="font-size: 11px;">Manager Override:</span>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-success ${status === 'available' ? 'active' : ''}" onclick="setRoomStatusLive('${room.room_no}', 'available')" title="Mark Available">
+              Available
+            </button>
+            <button class="btn btn-outline-danger ${status === 'occupied' ? 'active' : ''}" onclick="setRoomStatusLive('${room.room_no}', 'occupied')" title="Mark Occupied">
+              Occupied
+            </button>
+            <button class="btn btn-outline-warning ${status === 'maintenance' || status === 'cleaning' ? 'active' : ''}" onclick="setRoomStatusLive('${room.room_no}', 'maintenance')" title="Mark for Cleaning">
+              Cleaning
+            </button>
+          </div>
+        </div>
+      `;
     }
 
     return `
@@ -572,11 +693,13 @@ function renderRoomRack(rooms) {
                 <span class="text-muted d-block">${currentBooking.check_in_date} → ${currentBooking.check_out_date}</span>
                 <span class="font-monospace text-primary" style="font-size: 11px;">${currentBooking.booking_reference}</span>
 
+                ${!isRoomKeeper ? `
                 <div class="mt-3 pt-2 border-top">
                   <button class="btn btn-sm btn-outline-danger w-100 fw-bold" onclick="handleStayAction(${currentBooking.booking_id}, 'checked_out')">
                     <i data-lucide="log-out" style="width: 14px;"></i> Execute Checkout
                   </button>
                 </div>
+                ` : ''}
               </div>
             ` : isMaintenance ? `
               <div class="p-3 bg-warning-subtle text-warning-emphasis rounded-3 border border-warning-subtle mb-3 small">
@@ -592,7 +715,7 @@ function renderRoomRack(rooms) {
                   <i data-lucide="refresh-cw" class="animate-spin" style="width: 14px;"></i>
                   <strong>Cleaning in Progress</strong>
                 </div>
-                <span>Room Keeper is currently servicing this room.</span>
+                <span>Housekeeping is currently servicing this sanctuary.</span>
               </div>
             ` : `
               <div class="p-3 bg-light rounded-3 text-muted mb-3 small">
@@ -601,21 +724,7 @@ function renderRoomRack(rooms) {
             `}
           </div>
 
-          <!-- Room Status Controls -->
-          <div class="pt-3 border-top d-flex justify-content-between align-items-center">
-            <span class="small text-muted" style="font-size: 11px;">Override Status:</span>
-            <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-success ${status === 'available' ? 'active' : ''}" onclick="setRoomStatusLive('${room.room_no}', 'available')" title="Mark Available">
-                Available
-              </button>
-              <button class="btn btn-outline-danger ${status === 'occupied' ? 'active' : ''}" onclick="setRoomStatusLive('${room.room_no}', 'occupied')" title="Mark Occupied">
-                Occupied
-              </button>
-              <button class="btn btn-outline-warning ${status === 'maintenance' || status === 'cleaning' ? 'active' : ''}" onclick="setRoomStatusLive('${room.room_no}', 'maintenance')" title="Mark for Cleaning">
-                Cleaning
-              </button>
-            </div>
-          </div>
+          ${actionBlock}
         </div>
       </div>
     `;
@@ -743,36 +852,49 @@ function renderBookings(bookings) {
   }
 
   tbody.innerHTML = bookings.map(b => {
-    const status = b.booking_status || 'pending';
+    const status = b.booking_status || 'confirmed';
     let badgeClass = 'bg-secondary';
-    if (status === 'confirmed') badgeClass = 'bg-primary';
-    if (status === 'checked_in') badgeClass = 'bg-success';
-    if (status === 'checked_out') badgeClass = 'bg-dark';
-    if (status === 'cancelled') badgeClass = 'bg-danger';
+    let badgeText = status.toUpperCase();
+
+    if (status === 'confirmed') {
+      badgeClass = 'bg-primary';
+      badgeText = 'Confirmed';
+    } else if (status === 'checked_in') {
+      badgeClass = 'bg-success';
+      badgeText = 'Checked-in';
+    } else if (status === 'checked_out') {
+      badgeClass = 'bg-dark';
+      badgeText = 'Checked-out';
+    } else if (status === 'cancelled') {
+      badgeClass = 'bg-danger';
+      badgeText = 'Cancelled';
+    } else if (status === 'pending') {
+      badgeClass = 'bg-warning text-dark';
+      badgeText = 'Pending Approval';
+    }
+
+    const durationText = b.period === 'day' ? '24H Flex Day' : 'Night Stay';
 
     return `
-      <tr data-search="${(b.booking_reference + ' ' + b.guest_name + ' ' + b.guest_phone).toLowerCase()}">
+      <tr data-search="${(b.booking_reference + ' ' + b.guest_name + ' ' + (b.room_no || '')).toLowerCase()}">
         <td>
           <span class="font-monospace fw-bold text-dark">${b.booking_reference}</span>
         </td>
         <td>
-          <strong class="d-block">${b.guest_name}</strong>
-          <span class="text-muted small">${b.guest_phone || b.guest_email}</span>
+          <strong class="d-block text-dark">${b.guest_name}</strong>
+          <span class="small text-muted">${b.guest_email || 'No email'} &bull; ${b.guest_phone || 'No phone'}</span>
         </td>
         <td>
-          <span class="badge bg-light text-dark border">Room ${b.room_no || 'TBD'}</span>
+          <span class="badge bg-light text-dark border">Room ${b.room_no || 'Unassigned'}</span>
         </td>
         <td class="small">
-          ${b.check_in_date} → ${b.check_out_date}
+          <span class="d-block">${b.check_in_date}</span>
+          <span class="text-muted">→ ${b.check_out_date}</span>
         </td>
-        <td class="small text-uppercase">
-          ${b.period === 'day' ? '24H Flex' : 'Night'}
-        </td>
-        <td class="fw-bold font-serif">
-          ${formatLKR(b.invoice_amount)}
-        </td>
+        <td class="small text-muted">${durationText}</td>
+        <td class="fw-bold font-serif text-dark">${formatLKR(b.invoice_amount)}</td>
         <td>
-          <span class="badge ${badgeClass} text-uppercase" style="font-size: 10px;">${status.replace('_', ' ')}</span>
+          <span class="badge ${badgeClass}">${badgeText}</span>
         </td>
         <td class="text-end">
           <div class="btn-group btn-group-sm">
@@ -864,7 +986,7 @@ Warm regards,
 Front Desk & Reservations Concierge
 Hotel The Blue Moon Resort & Spa
 2855 Beach Side Rd, Unawatuna, Galle, Southern Province, Sri Lanka
-Tel: +94 717 224 755 | Web: https://blue-moon-web-virid.vercel.app`;
+Tel: +94 717 224 755 | Web: https://hotel-the-blue-moon-web.vercel.app`;
 
   adminState.currentEmailData = {
     to: booking.guest_email || 'guest@example.com',
@@ -1107,7 +1229,7 @@ async function handleWalkinSubmit(e) {
 // 8. EXECUTIVE REPORTING & CSV EXPORT (User Guide Page 7: General Manager)
 // =============================================================================
 
-// Generate Monthly Report (Calls Supabase RPC: generate_monthly_report)
+// Generate Monthly Performance Report (Calls Supabase RPC: generate_monthly_report)
 window.triggerMonthlyReport = async function(year, month) {
   if (!supabaseClient) return;
 
@@ -1194,105 +1316,601 @@ window.exportLedgerCSV = function() {
   showToast("Accounting ledger exported to CSV file successfully!");
 };
 
-// Manager Sub-view Switcher (Smooth focus on Customers or Salaries)
-window.switchManagerSubView = function(view) {
-  if (view === 'customers') {
-    const custSec = document.getElementById('manager-customers-section');
-    if (custSec) {
-      custSec.scrollIntoView({ behavior: 'smooth' });
-      custSec.classList.add('bg-warning-subtle');
-      setTimeout(() => custSec.classList.remove('bg-warning-subtle'), 1500);
+// =============================================================================
+// 9. MANAGER EXECUTIVE SUITE (SRS Pages 70-94: Staff, Salaries, Tariffs, Guests, Audits)
+// =============================================================================
+
+// Manager Sub-Navigation Switcher
+window.switchManagerSubSection = function(subId) {
+  adminState.managerSubSection = subId;
+  const subSections = ['staff', 'salaries', 'pricing', 'customers', 'audit'];
+  subSections.forEach(id => {
+    const secElem = document.getElementById(`manager-sec-${id}`);
+    const tabElem = document.getElementById(`subtab-${id}`);
+    if (id === subId) {
+      if (secElem) secElem.classList.remove('d-none');
+      if (tabElem) tabElem.classList.add('active');
+    } else {
+      if (secElem) secElem.classList.add('d-none');
+      if (tabElem) tabElem.classList.remove('active');
     }
-  } else if (view === 'salaries') {
-    const staffTable = document.getElementById('staff-table-body');
-    if (staffTable) {
-      staffTable.scrollIntoView({ behavior: 'smooth' });
-      staffTable.classList.add('bg-warning-subtle');
-      setTimeout(() => staffTable.classList.remove('bg-warning-subtle'), 1500);
-    }
-  }
+  });
+
+  if (window.lucide) window.lucide.createIcons();
 };
 
-// Render Staff Directory & Login Audit History (Page 6 & 7)
+// Render Staff Roster & Login Audit History (SRS Pages 88-94)
 function renderStaffAndLogins(staff, logins) {
   const staffTbody = document.getElementById('staff-table-body');
   const loginsTbody = document.getElementById('login-history-table-body');
 
   if (staffTbody) {
-    staffTbody.innerHTML = (staff && staff.length > 0) ? staff.map(emp => `
-      <tr>
-        <td>
-          <strong class="d-block text-dark">${emp.name}</strong>
-          <span class="text-muted small">NIC: ${emp.national_id || 'N/A'}</span>
-        </td>
-        <td>
-          <span class="badge bg-light text-dark border">${emp.designation}</span>
-        </td>
-        <td class="small">
-          <span class="d-block">${emp.email}</span>
-          <span class="text-muted">${emp.phone}</span>
-        </td>
-        <td class="text-end fw-bold font-serif text-success">
-          ${formatLKR(emp.basic_salary)}
-        </td>
-      </tr>
-    `).join('') : `<tr><td colspan="4" class="text-center text-muted">No staff records.</td></tr>`;
+    if (!staff || staff.length === 0) {
+      staffTbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">No staff records found.</td></tr>`;
+    } else {
+      staffTbody.innerHTML = staff.map(emp => {
+        const isActive = emp.is_active !== false;
+        const statusBadge = isActive
+          ? `<span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>`
+          : `<span class="badge bg-secondary-subtle text-secondary border">Deactivated</span>`;
+
+        return `
+          <tr data-emp-id="${emp.employee_id}" data-search="${(emp.name + ' ' + (emp.username || '') + ' ' + (emp.designation || '') + ' ' + (emp.national_id || '')).toLowerCase()}">
+            <td>
+              <span class="badge bg-light text-muted border font-monospace">EMP-${String(emp.employee_id).padStart(3, '0')}</span>
+            </td>
+            <td>
+              <strong class="d-block text-dark">${emp.name}</strong>
+              <span class="text-muted small font-monospace">@${emp.username || 'unassigned'}</span>
+            </td>
+            <td>
+              <span class="badge bg-light text-dark border">${emp.designation || 'Staff'}</span>
+            </td>
+            <td class="small">
+              <span class="d-block font-monospace">${emp.national_id || 'N/A'}</span>
+              <span class="text-muted">DOB: ${emp.date_of_birth || 'N/A'}</span>
+            </td>
+            <td class="small">
+              <span class="d-block">${emp.email || 'N/A'}</span>
+              <span class="text-muted">${emp.phone || 'N/A'}</span>
+            </td>
+            <td class="text-end fw-bold font-serif text-success">
+              ${formatLKR(emp.basic_salary)}
+            </td>
+            <td class="text-center">
+              ${statusBadge}
+            </td>
+            <td class="text-end">
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-dark" onclick="openEmployeeModal('edit', ${emp.employee_id})" title="Edit Staff Profile">
+                  <i data-lucide="edit-3" style="width: 14px;"></i> Edit
+                </button>
+                ${emp.employee_id !== 1 && isActive ? `
+                  <button class="btn btn-outline-danger" onclick="handleRemoveEmployee(${emp.employee_id}, '${emp.name.replace(/'/g, "\\'")}')" title="Deactivate Employee">
+                    <i data-lucide="user-x" style="width: 14px;"></i>
+                  </button>
+                ` : ''}
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
   }
 
   if (loginsTbody) {
-    loginsTbody.innerHTML = (logins && logins.length > 0) ? logins.map(log => {
-      const timeStr = log.login_time ? new Date(log.login_time).toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      }) : 'N/A';
-      return `
-        <tr>
-          <td><strong class="text-dark">${log.employee_name}</strong></td>
-          <td class="text-muted">${log.designation}</td>
-          <td class="text-end text-muted font-monospace">${timeStr}</td>
-        </tr>
-      `;
-    }).join('') : `<tr><td colspan="3" class="text-center text-muted">No login history recorded.</td></tr>`;
+    if (!logins || logins.length === 0) {
+      loginsTbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">No login history recorded.</td></tr>`;
+    } else {
+      loginsTbody.innerHTML = logins.map(log => {
+        const timeStr = log.login_time ? new Date(log.login_time).toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true
+        }) : 'N/A';
+        return `
+          <tr>
+            <td><strong class="text-dark">${log.employee_name || 'Staff Member'}</strong></td>
+            <td><span class="badge bg-light text-dark border">${log.designation || 'Staff'}</span></td>
+            <td class="text-end text-muted font-monospace">${timeStr}</td>
+            <td class="text-center">
+              <span class="badge bg-success-subtle text-success border border-success-subtle">
+                <i data-lucide="shield-check" style="width: 12px;"></i> Verified
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
   }
 }
 
-// Render Registered Customers Directory (Page 7: View Customers)
-function renderCustomers(customers) {
-  const custTbody = document.getElementById('customers-table-body');
-  const countBadge = document.getElementById('customer-count-badge');
-  if (!custTbody) return;
+// Staff Search Filter
+window.searchEmployees = function(query) {
+  const q = (query || '').toLowerCase().trim();
+  const rows = document.querySelectorAll('#staff-table-body tr');
+  rows.forEach(r => {
+    const s = r.dataset.search || '';
+    r.style.display = (!q || s.includes(q)) ? '' : 'none';
+  });
+};
 
-  if (countBadge) {
-    countBadge.textContent = `${(customers || []).length} Registered Guests`;
+// Open Staff Modal for Add or Edit
+window.openEmployeeModal = function(mode, empId) {
+  const modalElem = document.getElementById('employeeModal');
+  const titleElem = document.getElementById('employee-modal-title');
+  const formMode = document.getElementById('emp-form-mode');
+  const idField = document.getElementById('emp-id');
+  const passHelp = document.getElementById('emp-password-help');
+  const passLabel = document.getElementById('emp-password-label');
+  const passInput = document.getElementById('emp-password');
+
+  if (mode === 'add') {
+    titleElem.textContent = 'Add New Staff Member';
+    formMode.value = 'add';
+    idField.value = '';
+    document.getElementById('employee-form')?.reset();
+    if (passLabel) passLabel.textContent = 'Password *';
+    if (passHelp) passHelp.textContent = 'Min 6 characters. Blowfish salted hash.';
+    if (passInput) passInput.required = true;
+  } else {
+    titleElem.textContent = 'Edit Staff Member Profile';
+    formMode.value = 'edit';
+    idField.value = empId;
+    const emp = (adminState.dashboardData.staff || []).find(e => e.employee_id === empId);
+    if (!emp) return;
+
+    document.getElementById('emp-name').value = emp.name || '';
+    document.getElementById('emp-designation').value = emp.designation || 'Front Desk Receptionist';
+    document.getElementById('emp-username').value = emp.username || '';
+    document.getElementById('emp-nic').value = emp.national_id || '';
+    document.getElementById('emp-dob').value = emp.date_of_birth || '';
+    document.getElementById('emp-email').value = emp.email || '';
+    document.getElementById('emp-phone').value = emp.phone || '';
+    document.getElementById('emp-salary').value = emp.basic_salary || 50000;
+    document.getElementById('emp-address').value = emp.address || '';
+    if (passInput) {
+      passInput.value = '';
+      passInput.required = false;
+    }
+    if (passLabel) passLabel.textContent = 'New Password (Optional)';
+    if (passHelp) passHelp.textContent = 'Leave blank to preserve existing password.';
   }
 
-  if (!customers || customers.length === 0) {
-    custTbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No registered customers found.</td></tr>`;
+  if (modalElem && window.bootstrap) {
+    const bsModal = new window.bootstrap.Modal(modalElem);
+    bsModal.show();
+  }
+};
+
+// Save Staff Profile (Add or Edit)
+window.saveEmployee = async function(e) {
+  e.preventDefault();
+  if (!supabaseClient) return;
+
+  const mode = document.getElementById('emp-form-mode')?.value || 'add';
+  const empId = parseInt(document.getElementById('emp-id')?.value, 10);
+  const name = document.getElementById('emp-name')?.value?.trim();
+  const designation = document.getElementById('emp-designation')?.value;
+  const username = document.getElementById('emp-username')?.value?.trim();
+  const password = document.getElementById('emp-password')?.value;
+  const nic = document.getElementById('emp-nic')?.value?.trim();
+  const dob = document.getElementById('emp-dob')?.value || null;
+  const email = document.getElementById('emp-email')?.value?.trim();
+  const phone = document.getElementById('emp-phone')?.value?.trim();
+  const salary = parseFloat(document.getElementById('emp-salary')?.value) || 0;
+  const address = document.getElementById('emp-address')?.value?.trim() || '';
+  const submitBtn = document.getElementById('emp-submit-btn');
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'SAVING...';
+  }
+
+  try {
+    let res;
+    if (mode === 'add') {
+      res = await supabaseClient.rpc('add_employee', {
+        p_name: name,
+        p_designation: designation,
+        p_username: username,
+        p_password: password,
+        p_national_id: nic,
+        p_dob: dob,
+        p_email: email,
+        p_phone: phone,
+        p_basic_salary: salary,
+        p_address: address
+      });
+    } else {
+      res = await supabaseClient.rpc('update_employee', {
+        p_employee_id: empId,
+        p_name: name,
+        p_designation: designation,
+        p_username: username,
+        p_password: password || null,
+        p_national_id: nic,
+        p_dob: dob,
+        p_email: email,
+        p_phone: phone,
+        p_basic_salary: salary,
+        p_address: address
+      });
+    }
+
+    if (res.error || !res.data || !res.data.success) {
+      alert("Could not save staff profile: " + (res.data?.error || res.error?.message || 'Database error'));
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Save Staff Profile';
+      }
+      return;
+    }
+
+    // Close modal
+    const modalElem = document.getElementById('employeeModal');
+    if (modalElem && window.bootstrap) {
+      const bsModal = window.bootstrap.Modal.getInstance(modalElem);
+      if (bsModal) bsModal.hide();
+    }
+
+    showToast(`Staff member "${name}" saved successfully!`);
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Save Staff Profile';
+    }
+
+    loadDashboardData();
+  } catch (err) {
+    console.error("Save employee error:", err);
+    alert("Unexpected error saving employee.");
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Save Staff Profile';
+    }
+  }
+};
+
+// Deactivate / Soft-remove Staff Member
+window.handleRemoveEmployee = async function(empId, empName) {
+  if (!confirm(`Are you sure you want to deactivate staff member "${empName}"?\nTheir system login access will be immediately revoked.`)) return;
+
+  try {
+    const { data, error } = await supabaseClient.rpc('remove_employee', {
+      p_employee_id: empId
+    });
+
+    if (error || !data || !data.success) {
+      alert("Could not deactivate employee: " + (data?.error || error?.message || 'Error'));
+      return;
+    }
+
+    showToast(`Staff member "${empName}" deactivated.`);
+    loadDashboardData();
+  } catch (err) {
+    console.error("Deactivate error:", err);
+    alert("Could not deactivate employee.");
+  }
+};
+
+// =============================================================================
+// 10. SALARY & PAYROLL ADMINISTRATION (SRS Pages 84-87)
+// =============================================================================
+
+function renderSalaries(staff) {
+  const tbody = document.getElementById('salaries-table-body');
+  if (!tbody) return;
+
+  if (!staff || staff.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">No staff payroll records found.</td></tr>`;
     return;
   }
 
-  custTbody.innerHTML = customers.map(c => `
+  tbody.innerHTML = staff.filter(e => e.is_active !== false).map(emp => `
     <tr>
-      <td><span class="badge bg-light text-muted border font-monospace">CUST-${String(c.customer_id).padStart(4, '0')}</span></td>
-      <td><strong class="text-dark">${c.name}</strong></td>
-      <td><span class="font-monospace text-secondary">${c.national_id || 'N/A'}</span></td>
-      <td class="small">
-        <span class="d-block">${c.email}</span>
-        <span class="text-muted">${c.phone}</span>
-      </td>
-      <td class="small text-muted">${c.address || 'Standard Guest'}</td>
+      <td><span class="badge bg-light text-muted border font-monospace">EMP-${String(emp.employee_id).padStart(3, '0')}</span></td>
+      <td><strong class="text-dark">${emp.name}</strong></td>
+      <td><span class="badge bg-light text-dark border">${emp.designation}</span></td>
+      <td class="text-end fw-bold font-serif text-success fs-6">${formatLKR(emp.basic_salary)}</td>
       <td class="text-end">
-        <span class="badge bg-primary-subtle text-primary fw-bold">${c.total_bookings || 0} Bookings</span>
+        <button class="btn btn-sm btn-outline-primary" onclick="openSalaryModal(${emp.employee_id}, '${emp.name.replace(/'/g, "\\'")}', ${emp.basic_salary || 0})">
+          <i data-lucide="edit-3" style="width: 14px;"></i> Edit Salary
+        </button>
       </td>
     </tr>
   `).join('');
 }
 
+window.openSalaryModal = function(empId, empName, basicSalary) {
+  document.getElementById('sal-emp-id').value = empId;
+  document.getElementById('sal-emp-name').value = empName;
+  document.getElementById('sal-amount').value = basicSalary || 50000;
+
+  const modalElem = document.getElementById('salaryModal');
+  if (modalElem && window.bootstrap) {
+    const bsModal = new window.bootstrap.Modal(modalElem);
+    bsModal.show();
+  }
+};
+
+window.saveSalary = async function(e) {
+  e.preventDefault();
+  if (!supabaseClient) return;
+
+  const empId = parseInt(document.getElementById('sal-emp-id')?.value, 10);
+  const amount = parseFloat(document.getElementById('sal-amount')?.value) || 0;
+
+  try {
+    const { data, error } = await supabaseClient.rpc('update_employee_salary', {
+      p_employee_id: empId,
+      p_basic_salary: amount
+    });
+
+    if (error || !data || !data.success) {
+      alert("Could not update salary: " + (data?.error || error?.message || 'Error'));
+      return;
+    }
+
+    const modalElem = document.getElementById('salaryModal');
+    if (modalElem && window.bootstrap) {
+      const bsModal = window.bootstrap.Modal.getInstance(modalElem);
+      if (bsModal) bsModal.hide();
+    }
+
+    showToast(`Basic salary updated to ${formatLKR(amount)}.`);
+    loadDashboardData();
+  } catch (err) {
+    console.error("Salary save error:", err);
+    alert("Error saving salary.");
+  }
+};
+
+window.generateSalaryReport = function() {
+  const staff = (adminState.dashboardData.staff || []).filter(e => e.is_active !== false);
+  const count = staff.length;
+  const total = staff.reduce((acc, e) => acc + (parseFloat(e.basic_salary) || 0), 0);
+  const avg = count > 0 ? Math.round(total / count) : 0;
+
+  document.getElementById('salrep-count').textContent = `${count} Active Personnel`;
+  document.getElementById('salrep-total').textContent = formatLKR(total);
+  document.getElementById('salrep-avg').textContent = formatLKR(avg);
+
+  const now = new Date();
+  document.getElementById('salrep-timestamp').textContent = `${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} • ${now.toLocaleTimeString('en-US', { hour12: false })} (SLST)`;
+
+  const modalElem = document.getElementById('salaryReportModal');
+  if (modalElem && window.bootstrap) {
+    const bsModal = new window.bootstrap.Modal(modalElem);
+    bsModal.show();
+  }
+};
+
 // =============================================================================
-// 9. INVOICES & OFFICIAL PRINTABLE RECEIPTS
+// 11. ROOM RATES & TARIFF SCHEDULE (SRS Pages 80-83)
+// =============================================================================
+
+function renderPricingTable(pricing) {
+  const tbody = document.getElementById('pricing-table-body');
+  if (!tbody) return;
+
+  let list = pricing || [];
+  if (list.length === 0) {
+    const rooms = adminState.dashboardData.rooms || [
+      { room_no: '101', room_type: 'single' },
+      { room_no: '102', room_type: 'single' },
+      { room_no: '201', room_type: 'double' },
+      { room_no: '202', room_type: 'double' },
+      { room_no: '301', room_type: 'suite' },
+      { room_no: '401', room_type: 'family' }
+    ];
+    list = [];
+    rooms.forEach(r => {
+      list.push({ room_no: r.room_no, room_type: r.room_type, period: 'night', price: BASE_TARIFFS[r.room_type]?.night || 10000 });
+      list.push({ room_no: r.room_no, room_type: r.room_type, period: 'day', price: BASE_TARIFFS[r.room_type]?.day || 20000 });
+    });
+  }
+
+  const roomNames = {
+    single: "Single Deluxe Room",
+    double: "Double Ocean Room",
+    suite: "Grand Luxury Suite",
+    family: "Royal Family Residence"
+  };
+
+  list.sort((a, b) => a.room_no.localeCompare(b.room_no) || a.period.localeCompare(b.period));
+
+  tbody.innerHTML = list.map(item => {
+    const roomType = item.room_type || (item.room_no.startsWith('1') ? 'single' : item.room_no.startsWith('2') ? 'double' : item.room_no.startsWith('3') ? 'suite' : 'family');
+    const periodLabel = item.period === 'night' ? 'Standard Nightly Stay' : '24-Hour Flex Day Stay';
+    const periodBadge = item.period === 'night'
+      ? `<span class="badge bg-primary-subtle text-primary border border-primary-subtle">Night Rate</span>`
+      : `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">24H Flex Day</span>`;
+
+    return `
+      <tr>
+        <td><strong class="font-serif fs-6 text-dark">Room ${item.room_no}</strong></td>
+        <td><span class="text-secondary small fw-semibold">${roomNames[roomType] || roomType}</span></td>
+        <td>${periodBadge} <span class="small text-muted ms-1">${periodLabel}</span></td>
+        <td class="text-end fw-bold font-serif text-dark fs-6">${formatLKR(item.price)}</td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-dark" onclick="openPriceModal('${item.room_no}', '${item.period}', ${item.price})">
+            <i data-lucide="tag" style="width: 14px;"></i> Adjust Tariff
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+window.openPriceModal = function(roomNo, period, currentPrice) {
+  document.getElementById('price-room-no').value = roomNo;
+  document.getElementById('price-period').value = period;
+  document.getElementById('price-label').value = `Room ${roomNo} • ${period === 'night' ? 'Nightly Stay' : '24H Flex Day'}`;
+  document.getElementById('price-amount').value = currentPrice || 10000;
+
+  const modalElem = document.getElementById('priceModal');
+  if (modalElem && window.bootstrap) {
+    const bsModal = new window.bootstrap.Modal(modalElem);
+    bsModal.show();
+  }
+};
+
+window.saveRoomPrice = async function(e) {
+  e.preventDefault();
+  if (!supabaseClient) return;
+
+  const roomNo = document.getElementById('price-room-no')?.value;
+  const period = document.getElementById('price-period')?.value;
+  const price = parseFloat(document.getElementById('price-amount')?.value) || 0;
+
+  try {
+    const { data, error } = await supabaseClient.rpc('update_room_pricing', {
+      p_room_no: roomNo,
+      p_period: period,
+      p_price: price
+    });
+
+    if (error || !data || !data.success) {
+      alert("Could not update pricing: " + (data?.error || error?.message || 'Error'));
+      return;
+    }
+
+    const modalElem = document.getElementById('priceModal');
+    if (modalElem && window.bootstrap) {
+      const bsModal = window.bootstrap.Modal.getInstance(modalElem);
+      if (bsModal) bsModal.hide();
+    }
+
+    showToast(`Tariff for Room ${roomNo} (${period}) updated to ${formatLKR(price)}.`);
+    loadDashboardData();
+  } catch (err) {
+    console.error("Save price error:", err);
+    alert("Error updating price.");
+  }
+};
+
+// =============================================================================
+// 12. GUEST CUSTOMER DIRECTORY (SRS Pages 74-80)
+// =============================================================================
+
+function renderCustomers(customers) {
+  const custTbody = document.getElementById('customers-table-body');
+  if (!custTbody) return;
+
+  if (!customers || customers.length === 0) {
+    custTbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No registered guest records found.</td></tr>`;
+    return;
+  }
+
+  custTbody.innerHTML = customers.map(c => `
+    <tr data-cust-id="${c.customer_id}" data-search="${(c.name + ' ' + (c.national_id || '') + ' ' + (c.email || '') + ' ' + (c.phone || '')).toLowerCase()}">
+      <td><span class="badge bg-light text-muted border font-monospace">CUST-${String(c.customer_id).padStart(4, '0')}</span></td>
+      <td><strong class="text-dark">${c.name}</strong></td>
+      <td><span class="font-monospace text-secondary">${c.national_id || 'N/A'}</span></td>
+      <td class="small">
+        <span class="d-block">${c.email || 'N/A'}</span>
+        <span class="text-muted">${c.phone || 'N/A'}</span>
+      </td>
+      <td class="small text-muted">${c.address || 'Standard Guest'}</td>
+      <td class="text-center">
+        <span class="badge bg-primary-subtle text-primary fw-bold">${c.total_bookings || 0} Stays</span>
+      </td>
+      <td class="text-end">
+        <button class="btn btn-sm btn-outline-dark" onclick="openCustomerModal('edit', ${c.customer_id})">
+          <i data-lucide="edit-3" style="width: 14px;"></i> Edit
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+window.searchCustomers = function(query) {
+  const q = (query || '').toLowerCase().trim();
+  const rows = document.querySelectorAll('#customers-table-body tr');
+  rows.forEach(r => {
+    const s = r.dataset.search || '';
+    r.style.display = (!q || s.includes(q)) ? '' : 'none';
+  });
+};
+
+window.openCustomerModal = function(mode, custId) {
+  const modalElem = document.getElementById('customerModal');
+  const titleElem = document.getElementById('customer-modal-title');
+  const formMode = document.getElementById('cust-form-mode');
+  const idField = document.getElementById('cust-id');
+
+  if (mode === 'add') {
+    titleElem.textContent = 'Register New Guest (Customer)';
+    formMode.value = 'add';
+    idField.value = '';
+    document.getElementById('customer-form')?.reset();
+  } else {
+    titleElem.textContent = 'Edit Guest Profile';
+    formMode.value = 'edit';
+    idField.value = custId;
+    const cust = (adminState.dashboardData.customers || []).find(c => c.customer_id === custId);
+    if (!cust) return;
+
+    document.getElementById('cust-name').value = cust.name || '';
+    document.getElementById('cust-nic').value = cust.national_id || '';
+    document.getElementById('cust-phone').value = cust.phone || '';
+    document.getElementById('cust-email').value = cust.email || '';
+    document.getElementById('cust-address').value = cust.address || '';
+  }
+
+  if (modalElem && window.bootstrap) {
+    const bsModal = new window.bootstrap.Modal(modalElem);
+    bsModal.show();
+  }
+};
+
+window.saveCustomer = async function(e) {
+  e.preventDefault();
+  if (!supabaseClient) return;
+
+  const mode = document.getElementById('cust-form-mode')?.value || 'add';
+  const custId = mode === 'edit' ? parseInt(document.getElementById('cust-id')?.value, 10) : null;
+  const name = document.getElementById('cust-name')?.value?.trim();
+  const nic = document.getElementById('cust-nic')?.value?.trim();
+  const phone = document.getElementById('cust-phone')?.value?.trim();
+  const email = document.getElementById('cust-email')?.value?.trim();
+  const address = document.getElementById('cust-address')?.value?.trim() || '';
+
+  try {
+    const { data, error } = await supabaseClient.rpc('manage_customer', {
+      p_customer_id: custId,
+      p_name: name,
+      p_national_id: nic,
+      p_phone: phone,
+      p_email: email,
+      p_address: address
+    });
+
+    if (error || !data || !data.success) {
+      alert("Could not save customer: " + (data?.error || error?.message || 'Error'));
+      return;
+    }
+
+    const modalElem = document.getElementById('customerModal');
+    if (modalElem && window.bootstrap) {
+      const bsModal = window.bootstrap.Modal.getInstance(modalElem);
+      if (bsModal) bsModal.hide();
+    }
+
+    showToast(`Guest profile "${name}" saved!`);
+    loadDashboardData();
+  } catch (err) {
+    console.error("Save customer error:", err);
+    alert("Error saving customer profile.");
+  }
+};
+
+// =============================================================================
+// 13. INVOICES & OFFICIAL PRINTABLE RECEIPTS
 // =============================================================================
 
 function renderInvoices(invoices) {
@@ -1374,7 +1992,7 @@ window.openInvoiceModal = function(inv) {
 };
 
 // =============================================================================
-// 10. DOM INITIALIZATION
+// 14. DOM INITIALIZATION
 // =============================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
