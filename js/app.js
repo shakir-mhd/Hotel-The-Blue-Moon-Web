@@ -583,6 +583,32 @@ document.addEventListener('DOMContentLoaded', () => {
   // State for last looked-up reservation
   let currentLookupBooking = null;
 
+  // Tariff Help Modal Handlers (User Guide Page 3)
+  window.openTariffHelpModal = function() {
+    document.getElementById('tariff-help-modal')?.classList.add('active');
+    if (window.lucide) window.lucide.createIcons();
+  };
+
+  window.closeTariffHelpModal = function() {
+    document.getElementById('tariff-help-modal')?.classList.remove('active');
+  };
+
+  window.handleTariffModalBackdrop = function(e) {
+    if (e.target.id === 'tariff-help-modal') {
+      window.closeTariffHelpModal();
+    }
+  };
+
+  window.selectRoomFromHelp = function(roomType) {
+    const roomSelect = document.getElementById('booking-room-type');
+    if (roomSelect) {
+      roomSelect.value = roomType;
+      state.selectedRoom = roomType;
+      updateBookingSummary();
+    }
+    window.closeTariffHelpModal();
+  };
+
   window.openLookupModal = function() {
     document.getElementById('lookup-modal')?.classList.add('active');
     document.getElementById('lookup-alert')?.classList.add('d-none');

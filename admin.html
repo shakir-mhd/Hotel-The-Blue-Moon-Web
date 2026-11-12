@@ -28,60 +28,111 @@
 <body class="admin-body">
 
   <!-- =========================================================================
-       1. STAFF AUTHENTICATION SCREEN (Shown when logged out)
+       1. STAFF AUTHENTICATION SCREEN: POSITION SELECTOR & LOGIN
        ========================================================================= -->
   <div id="admin-auth-view" class="auth-wrapper">
-    <div class="auth-card">
-      <div class="auth-header">
-        <div class="d-inline-flex p-3 rounded-circle bg-white-10 mb-3" style="background: rgba(255, 255, 255, 0.08);">
-          <i data-lucide="moon" class="text-warning" style="width: 36px; height: 36px; transform: rotate(-12deg);"></i>
+    <div class="auth-container">
+      <div class="auth-card">
+        
+        <!-- Header -->
+        <div class="auth-header">
+          <div class="d-inline-flex p-3 rounded-circle mb-3" style="background: rgba(255, 255, 255, 0.08);">
+            <i data-lucide="moon" class="text-warning" style="width: 36px; height: 36px; transform: rotate(-12deg);"></i>
+          </div>
+          <h2 class="h3 font-serif fw-bold text-white mb-1">Hotel The Blue Moon</h2>
+          <span class="text-warning text-uppercase tracking-wider small font-sans fw-semibold" style="font-size: 11px;">
+            Professional Staff Operations Hub
+          </span>
         </div>
-        <h3 class="h4 font-serif fw-bold text-white mb-1">Hotel The Blue Moon</h3>
-        <span class="text-warning text-uppercase tracking-wider small font-sans fw-semibold" style="font-size: 11px;">Staff Operations Hub</span>
-      </div>
 
-      <div class="p-4 p-md-5">
-        <div id="login-error-alert" class="alert alert-danger py-2 small d-none" role="alert"></div>
+        <div class="p-4 p-md-5">
+          <!-- Step 1: Position / Designation Selector (User Guide Page 4) -->
+          <div id="position-selection-step">
+            <div class="text-center mb-4">
+              <h4 class="h5 font-serif fw-bold text-dark mb-1">Please Select Your Position</h4>
+              <p class="small text-muted mb-0">Authorized staff access only. Choose your operational department:</p>
+            </div>
 
-        <form id="staff-login-form">
-          <div class="mb-3">
-            <label class="form-label small fw-bold text-uppercase text-secondary">Username</label>
-            <div class="input-group">
-              <span class="input-group-text bg-light text-muted border-end-0"><i data-lucide="user" style="width: 16px;"></i></span>
-              <input type="text" id="login-username" class="form-control border-start-0" placeholder="e.g. admin or reception" required autocomplete="username">
+            <div class="row g-3 mb-4">
+              <!-- Position 1: Receptionist -->
+              <div class="col-md-4">
+                <div class="position-card" onclick="selectStaffPosition('Receptionist', 'reception', 'BlueMoonStaff2026!')">
+                  <div class="position-icon">
+                    <i data-lucide="bell-ring" style="width: 24px; height: 24px;"></i>
+                  </div>
+                  <h6 class="fw-bold mb-1">Receptionist</h6>
+                  <span class="small text-muted d-block" style="font-size: 11px;">Front Desk &amp; Billing</span>
+                </div>
+              </div>
+
+              <!-- Position 2: Room Keeper -->
+              <div class="col-md-4">
+                <div class="position-card" onclick="selectStaffPosition('Room Keeper', 'keeper', 'RoomKeeper2026!')">
+                  <div class="position-icon">
+                    <i data-lucide="sparkles" style="width: 24px; height: 24px;"></i>
+                  </div>
+                  <h6 class="fw-bold mb-1">Room Keeper</h6>
+                  <span class="small text-muted d-block" style="font-size: 11px;">Housekeeping &amp; Turns</span>
+                </div>
+              </div>
+
+              <!-- Position 3: Manager -->
+              <div class="col-md-4">
+                <div class="position-card" onclick="selectStaffPosition('Manager', 'admin', 'AdminBlueMoon2026!')">
+                  <div class="position-icon">
+                    <i data-lucide="shield-check" style="width: 24px; height: 24px;"></i>
+                  </div>
+                  <h6 class="fw-bold mb-1">Manager</h6>
+                  <span class="small text-muted d-block" style="font-size: 11px;">Executive &amp; Payroll</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="mb-4">
-            <label class="form-label small fw-bold text-uppercase text-secondary">Password</label>
-            <div class="input-group">
-              <span class="input-group-text bg-light text-muted border-end-0"><i data-lucide="lock" style="width: 16px;"></i></span>
-              <input type="password" id="login-password" class="form-control border-start-0" placeholder="••••••••••••" required autocomplete="current-password">
+          <!-- Step 2: Login Form (Appears once position selected) -->
+          <div id="position-login-step" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded-3 border">
+              <div>
+                <span class="text-muted small text-uppercase fw-bold" style="font-size: 10px;">Selected Position:</span>
+                <strong class="d-block text-dark font-serif" id="selected-position-label">Receptionist</strong>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetPositionSelection()">
+                Change Position
+              </button>
             </div>
+
+            <div id="login-error-alert" class="alert alert-danger py-2 small d-none" role="alert"></div>
+
+            <form id="staff-login-form">
+              <div class="mb-3">
+                <label class="form-label small fw-bold text-uppercase text-secondary">Username</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light text-muted border-end-0"><i data-lucide="user" style="width: 16px;"></i></span>
+                  <input type="text" id="login-username" class="form-control border-start-0" placeholder="Username" required autocomplete="username">
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <label class="form-label small fw-bold text-uppercase text-secondary">Password</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light text-muted border-end-0"><i data-lucide="lock" style="width: 16px;"></i></span>
+                  <input type="password" id="login-password" class="form-control border-start-0" placeholder="••••••••••••" required autocomplete="current-password">
+                </div>
+              </div>
+
+              <button type="submit" id="login-submit-btn" class="btn btn-dark w-100 py-3 fw-bold text-uppercase" style="background-color: var(--resort-blue-950);">
+                SIGN IN AS <span id="login-btn-role-label">STAFF</span>
+              </button>
+            </form>
           </div>
 
-          <button type="submit" id="login-submit-btn" class="btn btn-dark w-100 py-2 fw-bold text-uppercase" style="background-color: var(--resort-blue-950);">
-            SIGN IN TO HUB
-          </button>
-        </form>
-
-        <!-- Quick Demo Switcher -->
-        <div class="mt-4 pt-3 border-top text-center">
-          <span class="small text-muted d-block mb-2" style="font-size: 11px;">Quick Demo Staff Credentials:</span>
-          <div class="d-flex justify-content-center gap-2">
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillStaffDemo('admin', 'AdminBlueMoon2026!')">
-              Manager (admin)
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillStaffDemo('reception', 'BlueMoonStaff2026!')">
-              Front Desk (reception)
-            </button>
+          <!-- Return to Guest Website -->
+          <div class="text-center mt-4 pt-3 border-top">
+            <a href="/" class="small text-decoration-none text-secondary">
+              ← Return to Hotel The Blue Moon Website
+            </a>
           </div>
-        </div>
 
-        <div class="text-center mt-4">
-          <a href="/" class="small text-decoration-none text-secondary">
-            ← Return to Guest Website
-          </a>
         </div>
       </div>
     </div>
@@ -102,34 +153,15 @@
           <div class="d-flex align-items-center">
             <i data-lucide="moon" class="text-warning me-2" style="width: 24px; height: 24px;"></i>
             <span class="font-serif fw-bold text-white fs-5 leading-none">The Blue Moon</span>
-            <span class="badge bg-warning text-dark ms-2 text-uppercase fw-bold" style="font-size: 9px;">Hub</span>
+            <span class="badge bg-warning text-dark ms-2 text-uppercase fw-bold" id="current-role-badge">Hub</span>
           </div>
           <div class="vr bg-white opacity-25 d-none d-md-block" style="height: 24px;"></div>
           <div class="small text-white-50 d-none d-md-block" id="live-clock">--:--:-- GMT+5:30</div>
         </div>
 
-        <!-- Navigation Tabs -->
+        <!-- Navigation Tabs (Dynamically adapted to staff role) -->
         <ul class="nav admin-nav-tabs gap-1" id="hubNavTabs">
-          <li class="nav-item">
-            <a class="nav-link active" data-tab="room-rack" onclick="switchAdminTab('room-rack')">
-              <i data-lucide="layout-grid" class="me-1" style="width: 16px;"></i> Room Rack
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" data-tab="bookings" onclick="switchAdminTab('bookings')">
-              <i data-lucide="calendar" class="me-1" style="width: 16px;"></i> Bookings &amp; Guests
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" data-tab="invoices" onclick="switchAdminTab('invoices')">
-              <i data-lucide="receipt" class="me-1" style="width: 16px;"></i> Invoices &amp; Billing
-            </a>
-          </li>
-          <li class="nav-item" id="nav-item-staff">
-            <a class="nav-link" data-tab="staff" onclick="switchAdminTab('staff')">
-              <i data-lucide="users" class="me-1" style="width: 16px;"></i> Staff &amp; Payroll
-            </a>
-          </li>
+          <!-- Populated by admin.js based on role -->
         </ul>
 
         <!-- Staff Profile & Logout -->
@@ -138,7 +170,7 @@
             <span class="d-block small text-white fw-bold leading-tight" id="staff-display-name">Mohomed Shakir</span>
             <span class="small text-warning" style="font-size: 10px;" id="staff-display-role">General Manager</span>
           </div>
-          <a href="/" target="_blank" class="btn btn-sm btn-outline-light d-none d-lg-inline-block" title="Preview Live Guest Website">
+          <a href="/" target="_blank" class="btn btn-sm btn-outline-light d-none d-lg-inline-block" title="Preview Guest Website">
             <i data-lucide="external-link" style="width: 14px;"></i> Guest Site
           </a>
           <button class="btn btn-sm btn-danger d-flex align-items-center gap-1" onclick="handleStaffLogout()" title="Sign Out">
@@ -152,7 +184,23 @@
     <!-- Main Content Container -->
     <main class="container-fluid py-4 px-lg-4">
       
-      <!-- Live Metrics Ribbon -->
+      <!-- Staff Banner (User Guide Page 6: Shows "Your Last Login") -->
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center bg-white p-3 rounded-3 shadow-sm border mb-4 gap-2">
+        <div class="d-flex align-items-center">
+          <div class="p-2 bg-light rounded-circle text-warning me-3">
+            <i data-lucide="user-check" style="width: 20px; height: 20px;"></i>
+          </div>
+          <div>
+            <span class="small text-muted d-block" style="font-size: 11px;">Active Session:</span>
+            <strong class="text-dark" id="banner-staff-info">Mohomed Shakir (General Manager)</strong>
+          </div>
+        </div>
+        <div class="small text-muted">
+          <i data-lucide="history" style="width: 14px;"></i> Your Last Login: <span class="text-dark fw-bold" id="staff-last-login">Welcome! First login.</span>
+        </div>
+      </div>
+
+      <!-- Live KPI Metrics Ribbon -->
       <div class="row g-3 mb-4">
         <div class="col-xl-3 col-sm-6">
           <div class="stat-card d-flex align-items-center justify-content-between">
@@ -181,7 +229,7 @@
         <div class="col-xl-3 col-sm-6">
           <div class="stat-card d-flex align-items-center justify-content-between">
             <div>
-              <span class="text-muted small fw-bold text-uppercase d-block mb-1">Housekeeping / Cleaning</span>
+              <span class="text-muted small fw-bold text-uppercase d-block mb-1">Housekeeping Queue</span>
               <h3 class="h3 fw-bold text-warning mb-0" id="stat-maintenance">0</h3>
             </div>
             <div class="p-3 bg-warning-subtle rounded-3 text-warning">
@@ -203,9 +251,9 @@
         </div>
       </div>
 
-      <!-- Toast Notification Container -->
+      <!-- Toast Container -->
       <div id="admin-toast" class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
-        <div id="toast-message-box" class="toast align-items-center text-white bg-dark border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div id="toast-message-box" class="toast align-items-center text-white bg-dark border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
           <div class="d-flex">
             <div class="toast-body small" id="toast-body-text">Ready.</div>
             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
@@ -215,39 +263,44 @@
 
 
       <!-- =====================================================================
-           TAB PANE 1: VISUAL ROOM RACK
+           VIEW 1: RECEPTIONIST - ROOM RACK & LIVE CHECKOUT (User Guide Page 5)
            ===================================================================== -->
       <section id="pane-room-rack" class="admin-tab-pane">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
           <div>
-            <h4 class="h5 font-serif fw-bold mb-0">Front-Desk Visual Room Rack</h4>
-            <p class="small text-muted mb-0">Monitor live room statuses, current in-house guests, and manage housekeeping.</p>
+            <h4 class="h5 font-serif fw-bold mb-0">Front-Desk Visual Room Rack &amp; Checkout</h4>
+            <p class="small text-muted mb-0">Monitor live room statuses, view in-house guests, and execute one-click checkout &amp; billing.</p>
           </div>
           <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-dark text-warning d-flex align-items-center gap-1" onclick="openWalkinModal()">
+              <i data-lucide="user-plus" style="width: 14px;"></i> Add Walk-in Booking
+            </button>
             <button class="btn btn-sm btn-outline-secondary" onclick="loadDashboardData()">
               <i data-lucide="refresh-cw" style="width: 14px;"></i> Refresh
             </button>
           </div>
         </div>
 
-        <!-- Room Cards Grid -->
         <div class="row g-4" id="room-rack-grid">
-          <!-- Rendered dynamically by js/admin.js -->
+          <!-- Rendered dynamically -->
         </div>
       </section>
 
 
       <!-- =====================================================================
-           TAB PANE 2: BOOKINGS & GUEST LEDGER
+           VIEW 2: RECEPTIONIST - BOOKINGS MANAGER (User Guide Page 5)
            ===================================================================== -->
       <section id="pane-bookings" class="admin-tab-pane d-none">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
           <div>
-            <h4 class="h5 font-serif fw-bold mb-0">Reservation Ledger &amp; Check-ins</h4>
-            <p class="small text-muted mb-0">Review guest bookings, execute check-ins/outs, and generate invoices.</p>
+            <h4 class="h5 font-serif fw-bold mb-0">Reservation Ledger &amp; Requests</h4>
+            <p class="small text-muted mb-0">Review incoming requests. Confirm to assign room or Reject to cancel.</p>
           </div>
           <div class="d-flex gap-2">
-            <input type="text" id="booking-search-input" class="form-control form-control-sm" placeholder="Search reference or guest..." style="max-width: 260px;" oninput="filterBookingsTable()">
+            <button class="btn btn-sm btn-dark text-warning d-flex align-items-center gap-1" onclick="openWalkinModal()">
+              <i data-lucide="user-plus" style="width: 14px;"></i> New Walk-in
+            </button>
+            <input type="text" id="booking-search-input" class="form-control form-control-sm" placeholder="Search reference or guest..." style="max-width: 240px;" oninput="filterBookingsTable()">
           </div>
         </div>
 
@@ -274,7 +327,137 @@
 
 
       <!-- =====================================================================
-           TAB PANE 3: INVOICES & BILLING
+           VIEW 3: ROOM KEEPER - HOUSEKEEPING DASHBOARD (User Guide Page 6)
+           ===================================================================== -->
+      <section id="pane-housekeeping" class="admin-tab-pane d-none">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
+          <div>
+            <h4 class="h5 font-serif fw-bold mb-0">Housekeeping &amp; Room Turnover Queue</h4>
+            <p class="small text-muted mb-0">Rooms requiring cleaning attention immediately after guest checkout.</p>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary" onclick="loadDashboardData()">
+            <i data-lucide="refresh-cw" style="width: 14px;"></i> Refresh
+          </button>
+        </div>
+
+        <div class="row g-4" id="housekeeping-queue-grid">
+          <!-- Rendered dynamically -->
+        </div>
+      </section>
+
+
+      <!-- =====================================================================
+           VIEW 4: MANAGER - EXECUTIVE REPORTING & AUDIT (User Guide Page 7)
+           ===================================================================== -->
+      <section id="pane-manager" class="admin-tab-pane d-none">
+        <!-- Manager Quick Actions Bar -->
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 p-4 bg-white rounded-3 border shadow-sm gap-3">
+          <div>
+            <span class="subtitle-gold" style="font-size: 11px;">EXECUTIVE SUITE</span>
+            <h4 class="h4 font-serif fw-bold mb-1">General Manager Operations &amp; HR</h4>
+            <p class="small text-muted mb-0">Comprehensive hotel oversight, payroll administration, and monthly financial reporting.</p>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-2 px-3 py-2" onclick="triggerMonthlyReport()">
+              <i data-lucide="bar-chart-3" style="width: 16px;"></i> Generate Monthly Report
+            </button>
+            <button class="btn btn-outline-dark d-flex align-items-center gap-1" onclick="switchManagerSubView('customers')">
+              <i data-lucide="users" style="width: 14px;"></i> View Customers
+            </button>
+            <button class="btn btn-outline-dark d-flex align-items-center gap-1" onclick="switchManagerSubView('salaries')">
+              <i data-lucide="badge-dollar-sign" style="width: 14px;"></i> Salary Details
+            </button>
+          </div>
+        </div>
+
+        <!-- Manager Content Panels -->
+        <div class="row g-4">
+          <!-- Staff & Salaries Table -->
+          <div class="col-lg-7">
+            <div class="admin-table shadow-sm p-4 h-100">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="h6 font-serif fw-bold text-dark mb-0">Staff Roster &amp; Monthly Salaries</h5>
+                <span class="badge bg-light text-muted border">PostgreSQL Database</span>
+              </div>
+              <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Employee</th>
+                      <th>Designation</th>
+                      <th>Contact</th>
+                      <th class="text-end">Basic Salary</th>
+                    </tr>
+                  </thead>
+                  <tbody id="staff-table-body">
+                    <!-- Rendered dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Security Login Audit History (User Guide Page 6 & 7) -->
+          <div class="col-lg-5">
+            <div class="admin-table shadow-sm p-4 h-100">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="h6 font-serif fw-bold text-dark mb-0">Security Login Audit History</h5>
+                <span class="badge bg-success-subtle text-success">Live Tracked</span>
+              </div>
+              <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+                <table class="table table-sm align-middle mb-0" style="font-size: 12px;">
+                  <thead>
+                    <tr>
+                      <th>Staff Member</th>
+                      <th>Designation</th>
+                      <th class="text-end">Login Time</th>
+                    </tr>
+                  </thead>
+                  <tbody id="login-history-table-body">
+                    <!-- Rendered dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Customer Directory (User Guide Page 7: View Customers) -->
+        <div class="row g-4 mt-2" id="manager-customers-section">
+          <div class="col-12">
+            <div class="admin-table shadow-sm p-4">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                  <h5 class="h6 font-serif fw-bold text-dark mb-0">Registered Guest Directory (Customers)</h5>
+                  <span class="text-muted small">Guest profiles, national identity records, and lifetime reservation counts</span>
+                </div>
+                <span class="badge bg-primary-subtle text-primary" id="customer-count-badge">0 Guests</span>
+              </div>
+              <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Customer ID</th>
+                      <th>Guest Full Name</th>
+                      <th>National ID / Passport</th>
+                      <th>Contact Details</th>
+                      <th>Residential Address</th>
+                      <th class="text-end">Total Bookings</th>
+                    </tr>
+                  </thead>
+                  <tbody id="customers-table-body">
+                    <!-- Rendered dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- =====================================================================
+           VIEW 5: INVOICES & BILLING LEDGER
            ===================================================================== -->
       <section id="pane-invoices" class="admin-tab-pane d-none">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
@@ -307,81 +490,188 @@
         </div>
       </section>
 
-
-      <!-- =====================================================================
-           TAB PANE 4: STAFF & PAYROLL (Manager Access)
-           ===================================================================== -->
-      <section id="pane-staff" class="admin-tab-pane d-none">
-        <div class="mb-3">
-          <h4 class="h5 font-serif fw-bold mb-0">Staff Roster &amp; Payroll Management</h4>
-          <p class="small text-muted mb-0">Employee directory, compensation tracking, and security audit log.</p>
-        </div>
-
-        <div class="row g-4">
-          <!-- Staff & Salaries Table -->
-          <div class="col-lg-7">
-            <div class="admin-table shadow-sm p-4 h-100">
-              <h5 class="h6 font-serif fw-bold text-dark mb-3">Employee Directory &amp; Monthly Salaries</h5>
-              <div class="table-responsive">
-                <table class="table align-middle mb-0">
-                  <thead>
-                    <tr>
-                      <th>Employee</th>
-                      <th>Designation</th>
-                      <th>Contact</th>
-                      <th class="text-end">Basic Salary</th>
-                    </tr>
-                  </thead>
-                  <tbody id="staff-table-body">
-                    <!-- Rendered dynamically -->
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <!-- Login Audit Log -->
-          <div class="col-lg-5">
-            <div class="admin-table shadow-sm p-4 h-100">
-              <h5 class="h6 font-serif fw-bold text-dark mb-3">Recent Security Login History</h5>
-              <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
-                <table class="table table-sm align-middle mb-0" style="font-size: 12px;">
-                  <thead>
-                    <tr>
-                      <th>Staff Member</th>
-                      <th>Designation</th>
-                      <th class="text-end">Login Time</th>
-                    </tr>
-                  </thead>
-                  <tbody id="login-history-table-body">
-                    <!-- Rendered dynamically -->
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
     </main>
   </div>
 
 
   <!-- =========================================================================
-       3. OFFICIAL PRINTABLE INVOICE MODAL
+       3. MODAL: WALK-IN BOOKING (User Guide Page 5: Add New Booking)
        ========================================================================= -->
-  <div class="modal fade" id="invoiceModal" tabindex="-1" aria-labelledby="invoiceModalLabel" aria-hidden="true">
+  <div class="modal fade" id="walkinModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-dark text-white" style="background-color: var(--resort-blue-950) !important;">
+          <h5 class="modal-title font-serif">Front-Desk Walk-In Reservation</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="walkin-form">
+          <div class="modal-body p-4">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-uppercase">Guest Full Name *</label>
+                <input type="text" id="walkin-name" class="form-control" required placeholder="Guest Name">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-uppercase">National ID (NIC) *</label>
+                <input type="text" id="walkin-nic" class="form-control" required placeholder="e.g. 199512345678 or Passport">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-uppercase">Email Address *</label>
+                <input type="email" id="walkin-email" class="form-control" required placeholder="guest@example.com">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-uppercase">Phone Number *</label>
+                <input type="tel" id="walkin-phone" class="form-control" required placeholder="+94 771 234 567">
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-bold text-uppercase">Residential Address</label>
+                <input type="text" id="walkin-address" class="form-control" placeholder="Street, City, Country">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-bold text-uppercase">Select Room *</label>
+                <select id="walkin-room" class="form-select" required onchange="calculateWalkinTariff()">
+                  <!-- Dynamically populated with available rooms -->
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-bold text-uppercase">Stay Duration *</label>
+                <select id="walkin-period" class="form-select" onchange="calculateWalkinTariff()">
+                  <option value="night">One Night Stay</option>
+                  <option value="day">Full Day 24H Flex</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-bold text-uppercase">Check-In Date *</label>
+                <input type="date" id="walkin-checkin" class="form-control" required onchange="calculateWalkinTariff()">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-bold text-uppercase">Check-Out Date *</label>
+                <input type="date" id="walkin-checkout" class="form-control" required onchange="calculateWalkinTariff()">
+              </div>
+              <div class="col-md-8">
+                <div class="p-3 bg-light rounded-3 border h-100 d-flex justify-content-between align-items-center">
+                  <div>
+                    <span class="small text-muted d-block">Estimated Total (Inc 18% VAT):</span>
+                    <h4 class="h5 font-serif fw-bold text-dark mb-0" id="walkin-calculated-total">LKR 0</h4>
+                  </div>
+                  <span class="badge bg-success">Instant Check-in</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" id="walkin-submit-btn" class="btn btn-warning text-dark fw-bold px-4">
+              Confirm Check-in &amp; Bill
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- =========================================================================
+       4. MODAL: MONTHLY FINANCIAL REPORT (User Guide Page 7)
+       ========================================================================= -->
+  <div class="modal fade" id="monthlyReportModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content border-0 shadow-lg">
         <div class="modal-header bg-dark text-white no-print" style="background-color: var(--resort-blue-950) !important;">
-          <h5 class="modal-title font-serif" id="invoiceModalLabel">Official Guest Invoice &amp; Receipt</h5>
+          <h5 class="modal-title font-serif">Monthly Performance &amp; Analytics Report</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
+        <div class="modal-body p-4 p-md-5">
+          <div id="printable-monthly-report" class="p-4 bg-white">
+            
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
+              <div>
+                <h3 class="h4 font-serif fw-bold mb-0">Hotel The Blue Moon</h3>
+                <span class="text-muted small">Executive Monthly Performance Audit</span>
+              </div>
+              <div class="text-end">
+                <span class="h5 font-serif text-warning fw-bold d-block mb-0" id="rep-month-name">November 2026</span>
+                <span class="small text-muted" style="font-size: 11px;">Unawatuna, Galle, Sri Lanka</span>
+              </div>
+            </div>
 
+            <!-- 3 Core Report Metrics (Directly matching User Guide Page 7) -->
+            <div class="row g-3 mb-4 text-center">
+              <div class="col-md-4">
+                <div class="p-3 bg-light rounded-3 border">
+                  <span class="small text-muted text-uppercase fw-bold d-block mb-1">Total Earnings (Rs.)</span>
+                  <h3 class="h4 font-serif text-success fw-bold mb-0" id="rep-total-earnings">LKR 0</h3>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="p-3 bg-light rounded-3 border">
+                  <span class="small text-muted text-uppercase fw-bold d-block mb-1">Total Number of Bookings</span>
+                  <h3 class="h4 font-serif text-dark fw-bold mb-0" id="rep-total-bookings">0</h3>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="p-3 bg-light rounded-3 border">
+                  <span class="small text-muted text-uppercase fw-bold d-block mb-1">Total Unique Customers</span>
+                  <h3 class="h4 font-serif text-primary fw-bold mb-0" id="rep-unique-customers">0</h3>
+                </div>
+              </div>
+            </div>
+
+            <!-- Detailed Financial Breakdown -->
+            <table class="table align-middle border mb-4">
+              <thead class="table-light">
+                <tr class="small text-uppercase">
+                  <th>Revenue Category</th>
+                  <th class="text-end">Amount (LKR)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Room Accommodation Net Subtotal</td>
+                  <td class="text-end font-monospace" id="rep-subtotal">LKR 0</td>
+                </tr>
+                <tr>
+                  <td>Resort Service Charge &amp; Government VAT (18%)</td>
+                  <td class="text-end font-monospace" id="rep-tax">LKR 0</td>
+                </tr>
+                <tr class="table-light fw-bold">
+                  <td>Gross Invoiced Collections</td>
+                  <td class="text-end font-serif fs-5 text-success" id="rep-gross">LKR 0</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="d-flex justify-content-between small text-muted pt-3 border-top">
+              <span>Report Generated: <strong id="rep-generated-at">--</strong></span>
+              <span>Authorized Signature: <strong>General Manager</strong></span>
+            </div>
+
+          </div>
+        </div>
+        <div class="modal-footer no-print">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-warning text-dark fw-bold" onclick="window.print()">
+            <i data-lucide="printer" style="width: 16px;"></i> Print Report
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- =========================================================================
+       5. MODAL: OFFICIAL PRINTABLE INVOICE & RECEIPT
+       ========================================================================= -->
+  <div class="modal fade" id="invoiceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-dark text-white no-print" style="background-color: var(--resort-blue-950) !important;">
+          <h5 class="modal-title font-serif">Official Guest Invoice &amp; Receipt</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
         <div class="modal-body p-4 p-md-5">
           <div id="printable-invoice-container" class="invoice-paper">
             
-            <!-- Invoice Header -->
             <div class="invoice-header d-flex justify-content-between align-items-start">
               <div>
                 <div class="d-flex align-items-center mb-1">
@@ -398,7 +688,6 @@
               </div>
             </div>
 
-            <!-- Guest & Stay Metadata -->
             <div class="row g-3 py-3 border-bottom mb-4 small">
               <div class="col-sm-6">
                 <span class="text-muted text-uppercase d-block fw-bold" style="font-size: 10px;">Billed To (Guest)</span>
@@ -414,7 +703,6 @@
               </div>
             </div>
 
-            <!-- Line Items Table -->
             <table class="table align-middle mb-4">
               <thead class="table-light">
                 <tr class="small text-uppercase">
@@ -445,7 +733,6 @@
               </tfoot>
             </table>
 
-            <!-- Footer Notes -->
             <div class="pt-4 mt-4 border-top text-center small text-muted">
               <p class="mb-1">Thank you for choosing Hotel The Blue Moon for your stay in Sri Lanka.</p>
               <p class="mb-0" style="font-size: 10px;">This document serves as an official electronic receipt. Reg No: LK-80000-BMN</p>
@@ -453,7 +740,6 @@
 
           </div>
         </div>
-
         <div class="modal-footer no-print">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
           <button type="button" class="btn btn-primary" onclick="window.print()">
@@ -472,4 +758,3 @@
   <script type="module" src="/js/admin.js"></script>
 </body>
 </html>
-

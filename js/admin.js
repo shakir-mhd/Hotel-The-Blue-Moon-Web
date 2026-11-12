@@ -1,6 +1,7 @@
 /**
  * Hotel The Blue Moon - Staff Operations Hub Logic (admin.js)
- * Vanilla JavaScript (ES6) with Supabase RPC
+ * Bespoke 7-Star Luxury Hotel Management System
+ * Vanilla JavaScript (ES6) with Supabase Database & Security RPCs
  */
 
 import { supabaseClient } from './supabaseClient.js';
@@ -8,15 +9,26 @@ import { supabaseClient } from './supabaseClient.js';
 // Global Dashboard State
 const adminState = {
   staffUser: null,
+  selectedPosition: null,
   activeTab: 'room-rack',
+  calculatedWalkinTotal: 0,
   dashboardData: {
     stats: {},
     rooms: [],
     bookings: [],
     invoices: [],
     logins: [],
-    staff: []
+    staff: [],
+    customers: []
   }
+};
+
+// Base tariff mapping in Sri Lankan Rupees (LKR)
+const BASE_TARIFFS = {
+  single: { night: 10000, day: 20000 },
+  double: { night: 20000, day: 40000 },
+  suite:  { night: 50000, day: 80000 },
+  family: { night: 100000, day: 150000 }
 };
 
 // Currency Formatter Helper (LKR)
@@ -38,7 +50,7 @@ function showToast(message) {
   }
 }
 
-// Live Clock Initializer (Sri Lanka Standard Time)
+// Live Clock Initializer (Sri Lanka Standard Time - GMT+5:30)
 function initLiveClock() {
   const clockElem = document.getElementById('live-clock');
   function updateTime() {
@@ -50,6 +62,249 @@ function initLiveClock() {
   }
   updateTime();
   setInterval(updateTime, 1000);
+}
+
+// =============================================================================
+// 1. POSITION SELECTION & AUTHENTICATION (User Guide Page 4)
+// =============================================================================
+
+// Step 1: User selects staff role / position
+window.selectStaffPosition = function(position, defaultUser, defaultPass) {
+  adminState.selectedPosition = position;
+
+  // Highlight selected card visually
+  document.querySelectorAll('.position-card').forEach(card => card.classList.remove('selected'));
+
+  const roleLabels = {
+    'Receptionist': 'Receptionist (Front Desk)',
+    'Room Keeper': 'Room Keeper (Housekeeping)',
+    'Manager': 'General Manager (Executive)'
+  };
+
+  const labelElem = document.getElementById('selected-position-label');
+  const btnLabelElem = document.getElementById('login-btn-role-label');
+  if (labelElem) labelElem.textContent = roleLabels[position] || position;
+  if (btnLabelElem) btnLabelElem.textContent = position.toUpperCase();
+
+  // Pre-fill demo credentials for smooth convenience while allowing full editing
+  const userField = document.getElementById('login-username');
+  const passField = document.getElementById('login-password');
+  if (userField && defaultUser) userField.value = defaultUser;
+  if (passField && defaultPass) passField.value = defaultPass;
+
+  // Hide selector step, display login form
+  document.getElementById('position-selector-step')?.classList.add('d-none');
+  document.getElementById('position-login-step')?.classList.remove('d-none');
+  document.getElementById('login-error-alert')?.classList.add('d-none');
+
+  if (window.lucide) window.lucide.createIcons();
+};
+
+// Reset position selection to return to role cards
+window.resetPositionSelection = function() {
+  adminState.selectedPosition = null;
+  document.getElementById('position-selector-step')?.classList.remove('d-none');
+  document.getElementById('position-login-step')?.classList.add('d-none');
+  document.getElementById('login-error-alert')?.classList.add('d-none');
+
+  const userField = document.getElementById('login-username');
+  const passField = document.getElementById('login-password');
+  if (userField) userField.value = '';
+  if (passField) passField.value = '';
+
+  if (window.lucide) window.lucide.createIcons();
+};
+
+// Staff Login Form Submission Handler
+async function handleLoginSubmit(e) {
+  e.preventDefault();
+  const username = document.getElementById('login-username')?.value?.trim();
+  const password = document.getElementById('login-password')?.value;
+  const submitBtn = document.getElementById('login-submit-btn');
+  const errorAlert = document.getElementById('login-error-alert');
+
+  if (!username || !password) return;
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'VERIFYING CREDENTIALS...';
+  }
+  if (errorAlert) errorAlert.classList.add('d-none');
+
+  try {
+    if (!supabaseClient) {
+      throw new Error("Supabase client is not available.");
+    }
+
+    // Call server-side authentication RPC with position verification
+    const { data, error } = await supabaseClient.rpc('authenticate_staff_member', {
+      p_username: username,
+      p_password: password,
+      p_position: adminState.selectedPosition || null
+    });
+
+    if (error || !data || !data.success) {
+      const msg = data?.error || error?.message || 'Invalid username or password.';
+      if (errorAlert) {
+        errorAlert.textContent = msg;
+        errorAlert.classList.remove('d-none');
+      }
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = `SIGN IN AS ${(adminState.selectedPosition || 'STAFF').toUpperCase()}`;
+      }
+      return;
+    }
+
+    // Login successful
+    adminState.staffUser = data;
+    sessionStorage.setItem('blue_moon_staff', JSON.stringify(data));
+    showDashboardView();
+    showToast(`Welcome back, ${data.name}!`);
+
+  } catch (err) {
+    console.error("Login exception:", err);
+    if (errorAlert) {
+      errorAlert.textContent = err.message || 'Authentication error. Please try again.';
+      errorAlert.classList.remove('d-none');
+    }
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = `SIGN IN AS ${(adminState.selectedPosition || 'STAFF').toUpperCase()}`;
+    }
+  }
+}
+
+// Staff Logout Handler
+window.handleStaffLogout = function() {
+  sessionStorage.removeItem('blue_moon_staff');
+  adminState.staffUser = null;
+  adminState.selectedPosition = null;
+
+  document.getElementById('admin-dashboard-view')?.classList.add('d-none');
+  document.getElementById('admin-auth-view')?.classList.remove('d-none');
+  resetPositionSelection();
+};
+
+// =============================================================================
+// 2. DASHBOARD VIEW & ROLE-BASED NAVIGATION SETUP
+// =============================================================================
+
+function showDashboardView() {
+  document.getElementById('admin-auth-view')?.classList.add('d-none');
+  document.getElementById('admin-dashboard-view')?.classList.remove('d-none');
+
+  if (!adminState.staffUser) return;
+
+  const user = adminState.staffUser;
+  const designation = user.designation || '';
+  const isManager = designation.toLowerCase().includes('manager') || designation.toLowerCase().includes('admin');
+  const isReception = designation.toLowerCase().includes('reception');
+  const isRoomKeeper = designation.toLowerCase().includes('room') || designation.toLowerCase().includes('keeper') || designation.toLowerCase().includes('housekeeping');
+
+  // Update staff identity banners
+  const nameElem = document.getElementById('staff-display-name');
+  const roleElem = document.getElementById('staff-display-role');
+  const badgeElem = document.getElementById('current-role-badge');
+  const bannerInfo = document.getElementById('banner-staff-info');
+  const lastLoginElem = document.getElementById('staff-last-login');
+
+  if (nameElem) nameElem.textContent = user.name;
+  if (roleElem) roleElem.textContent = designation;
+  if (badgeElem) badgeElem.textContent = isManager ? 'Manager' : isRoomKeeper ? 'Room Keeper' : 'Receptionist';
+  if (bannerInfo) bannerInfo.textContent = `${user.name} (${designation})`;
+
+  if (lastLoginElem && user.last_login_time) {
+    const formattedDate = new Date(user.last_login_time).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+    lastLoginElem.textContent = formattedDate;
+  }
+
+  // Construct Role-Tailored Navigation Tabs
+  buildRoleNavigation(isManager, isReception, isRoomKeeper);
+
+  // Load live data from Supabase
+  loadDashboardData();
+}
+
+function buildRoleNavigation(isManager, isReception, isRoomKeeper) {
+  const navContainer = document.getElementById('hubNavTabs');
+  if (!navContainer) return;
+
+  let tabsHtml = '';
+  let defaultTab = 'room-rack';
+
+  if (isRoomKeeper) {
+    // Room Keeper Role (User Guide Page 6)
+    defaultTab = 'housekeeping';
+    tabsHtml = `
+      <li class="nav-item">
+        <a class="nav-link active" data-tab="housekeeping" onclick="switchAdminTab('housekeeping')">
+          <i data-lucide="sparkles" style="width: 15px;"></i> Housekeeping Queue
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-tab="room-rack" onclick="switchAdminTab('room-rack')">
+          <i data-lucide="layout-grid" style="width: 15px;"></i> All Rooms
+        </a>
+      </li>
+    `;
+  } else if (isReception) {
+    // Receptionist Role (User Guide Page 5)
+    defaultTab = 'room-rack';
+    tabsHtml = `
+      <li class="nav-item">
+        <a class="nav-link active" data-tab="room-rack" onclick="switchAdminTab('room-rack')">
+          <i data-lucide="layout-grid" style="width: 15px;"></i> Room Rack &amp; Checkout
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-tab="bookings" onclick="switchAdminTab('bookings')">
+          <i data-lucide="calendar-check" style="width: 15px;"></i> Reservations
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-tab="invoices" onclick="switchAdminTab('invoices')">
+          <i data-lucide="receipt" style="width: 15px;"></i> Invoices &amp; Bills
+        </a>
+      </li>
+    `;
+  } else {
+    // General Manager Role (User Guide Page 7)
+    defaultTab = 'manager';
+    tabsHtml = `
+      <li class="nav-item">
+        <a class="nav-link active" data-tab="manager" onclick="switchAdminTab('manager')">
+          <i data-lucide="shield-check" style="width: 15px;"></i> Executive &amp; HR
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-tab="room-rack" onclick="switchAdminTab('room-rack')">
+          <i data-lucide="layout-grid" style="width: 15px;"></i> Visual Room Rack
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-tab="bookings" onclick="switchAdminTab('bookings')">
+          <i data-lucide="calendar-check" style="width: 15px;"></i> Reservations
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-tab="invoices" onclick="switchAdminTab('invoices')">
+          <i data-lucide="receipt" style="width: 15px;"></i> Billing Ledger
+        </a>
+      </li>
+    `;
+  }
+
+  navContainer.innerHTML = tabsHtml;
+  switchAdminTab(defaultTab);
 }
 
 // Tab Switching Handler
@@ -78,105 +333,10 @@ window.switchAdminTab = function(tabId) {
   if (window.lucide) window.lucide.createIcons();
 };
 
-// Quick Demo Staff Credentials Fill Helper
-window.fillStaffDemo = function(username, password) {
-  const userField = document.getElementById('login-username');
-  const passField = document.getElementById('login-password');
-  if (userField) userField.value = username;
-  if (passField) passField.value = password;
-};
+// =============================================================================
+// 3. DATA LOADING & LIVE SYNCHRONIZATION
+// =============================================================================
 
-// Staff Login Handler
-async function handleLoginSubmit(e) {
-  e.preventDefault();
-  const username = document.getElementById('login-username')?.value?.trim();
-  const password = document.getElementById('login-password')?.value;
-  const submitBtn = document.getElementById('login-submit-btn');
-  const errorAlert = document.getElementById('login-error-alert');
-
-  if (!username || !password) return;
-
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'VERIFYING CREDENTIALS...';
-  }
-  if (errorAlert) errorAlert.classList.add('d-none');
-
-  try {
-    if (!supabaseClient) {
-      throw new Error("Supabase client is not available.");
-    }
-
-    const { data, error } = await supabaseClient.rpc('verify_employee_login', {
-      p_username: username,
-      p_password: password
-    });
-
-    if (error || !data || !data.success) {
-      const msg = data?.error || error?.message || 'Invalid username or password.';
-      if (errorAlert) {
-        errorAlert.textContent = msg;
-        errorAlert.classList.remove('d-none');
-      }
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'SIGN IN TO HUB';
-      }
-      return;
-    }
-
-    // Login successful
-    adminState.staffUser = data;
-    sessionStorage.setItem('blue_moon_staff', JSON.stringify(data));
-    showDashboardView();
-    showToast(`Welcome back, ${data.name}!`);
-
-  } catch (err) {
-    console.error("Login exception:", err);
-    if (errorAlert) {
-      errorAlert.textContent = err.message || 'Authentication error. Please try again.';
-      errorAlert.classList.remove('d-none');
-    }
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'SIGN IN TO HUB';
-    }
-  }
-}
-
-// Staff Logout Handler
-window.handleStaffLogout = function() {
-  sessionStorage.removeItem('blue_moon_staff');
-  adminState.staffUser = null;
-  document.getElementById('admin-dashboard-view')?.classList.add('d-none');
-  document.getElementById('admin-auth-view')?.classList.remove('d-none');
-  const userField = document.getElementById('login-username');
-  const passField = document.getElementById('login-password');
-  if (userField) userField.value = '';
-  if (passField) passField.value = '';
-};
-
-// Show Dashboard View & Profile
-function showDashboardView() {
-  document.getElementById('admin-auth-view')?.classList.add('d-none');
-  document.getElementById('admin-dashboard-view')?.classList.remove('d-none');
-
-  if (adminState.staffUser) {
-    document.getElementById('staff-display-name').textContent = adminState.staffUser.name;
-    document.getElementById('staff-display-role').textContent = adminState.staffUser.designation;
-
-    // Hide staff payroll tab if not manager
-    const isManager = adminState.staffUser.designation.toLowerCase().includes('manager');
-    const staffNav = document.getElementById('nav-item-staff');
-    if (staffNav) {
-      staffNav.style.display = isManager ? 'block' : 'none';
-    }
-  }
-
-  loadDashboardData();
-}
-
-// Load Full Dashboard Data from Supabase
 window.loadDashboardData = async function() {
   if (!supabaseClient) return;
 
@@ -193,8 +353,10 @@ window.loadDashboardData = async function() {
       renderMetrics(data.stats);
       renderRoomRack(data.rooms);
       renderBookings(data.bookings);
+      renderHousekeepingQueue(data.rooms);
       renderInvoices(data.invoices);
       renderStaffAndLogins(data.staff, data.logins);
+      renderCustomers(data.customers);
       if (window.lucide) window.lucide.createIcons();
     }
   } catch (err) {
@@ -205,13 +367,21 @@ window.loadDashboardData = async function() {
 // Render KPI Metrics
 function renderMetrics(stats) {
   if (!stats) return;
-  document.getElementById('stat-available').textContent = stats.available_rooms ?? 0;
-  document.getElementById('stat-occupied').textContent = stats.occupied_rooms ?? 0;
-  document.getElementById('stat-maintenance').textContent = stats.maintenance_rooms ?? 0;
-  document.getElementById('stat-revenue').textContent = formatLKR(stats.total_revenue ?? 0);
+  const availElem = document.getElementById('stat-available');
+  const occElem = document.getElementById('stat-occupied');
+  const maintElem = document.getElementById('stat-maintenance');
+  const revElem = document.getElementById('stat-revenue');
+
+  if (availElem) availElem.textContent = stats.available_rooms ?? 0;
+  if (occElem) occElem.textContent = stats.occupied_rooms ?? 0;
+  if (maintElem) maintElem.textContent = stats.maintenance_rooms ?? 0;
+  if (revElem) revElem.textContent = formatLKR(stats.total_revenue ?? 0);
 }
 
-// Render Room Rack Cards
+// =============================================================================
+// 4. ROOM RACK & LIVE CHECKOUT (User Guide Page 5)
+// =============================================================================
+
 function renderRoomRack(rooms) {
   const container = document.getElementById('room-rack-grid');
   if (!container) return;
@@ -222,16 +392,17 @@ function renderRoomRack(rooms) {
   }
 
   const roomNames = {
-    single: "Single Room",
-    double: "Double Room",
-    suite: "Suite Room",
-    family: "Family Room"
+    single: "Single Deluxe Room",
+    double: "Double Ocean Room",
+    suite: "Grand Luxury Suite",
+    family: "Royal Family Residence"
   };
 
   container.innerHTML = rooms.map(room => {
     const status = room.status || 'available';
     const isOccupied = status === 'occupied';
     const isMaintenance = status === 'maintenance';
+    const isCleaning = status === 'cleaning';
     const currentBooking = room.current_booking;
 
     let badgeClass = 'badge-available';
@@ -242,6 +413,9 @@ function renderRoomRack(rooms) {
     } else if (isMaintenance) {
       badgeClass = 'badge-maintenance';
       badgeText = 'Housekeeping';
+    } else if (isCleaning) {
+      badgeClass = 'badge-cleaning';
+      badgeText = 'Cleaning';
     }
 
     return `
@@ -262,25 +436,46 @@ function renderRoomRack(rooms) {
 
             ${isOccupied && currentBooking ? `
               <div class="p-3 bg-light rounded-3 border mb-3 small">
-                <span class="text-muted d-block text-uppercase fw-bold" style="font-size: 9px;">Current Guest</span>
-                <strong class="d-block text-dark">${currentBooking.guest_name}</strong>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="text-muted text-uppercase fw-bold" style="font-size: 9px;">Current Guest</span>
+                  <span class="badge bg-danger text-uppercase" style="font-size: 9px;">Checked In</span>
+                </div>
+                <strong class="d-block text-dark fs-6">${currentBooking.guest_name}</strong>
                 <span class="text-muted d-block">${currentBooking.check_in_date} → ${currentBooking.check_out_date}</span>
                 <span class="font-monospace text-primary" style="font-size: 11px;">${currentBooking.booking_reference}</span>
+
+                <div class="mt-3 pt-2 border-top">
+                  <button class="btn btn-sm btn-outline-danger w-100 fw-bold" onclick="handleStayAction(${currentBooking.booking_id}, 'checked_out')">
+                    <i data-lucide="log-out" style="width: 14px;"></i> Execute Checkout
+                  </button>
+                </div>
               </div>
             ` : isMaintenance ? `
               <div class="p-3 bg-warning-subtle text-warning-emphasis rounded-3 border border-warning-subtle mb-3 small">
-                <i data-lucide="sparkles" style="width: 14px;"></i> Room scheduled for housekeeping inspection.
+                <div class="d-flex align-items-center gap-2 mb-1">
+                  <i data-lucide="sparkles" style="width: 14px;"></i>
+                  <strong>Needs Housekeeping</strong>
+                </div>
+                <span>Guest has checked out. Turnover required before re-assignment.</span>
+              </div>
+            ` : isCleaning ? `
+              <div class="p-3 bg-primary-subtle text-primary-emphasis rounded-3 border border-primary-subtle mb-3 small">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                  <i data-lucide="refresh-cw" class="animate-spin" style="width: 14px;"></i>
+                  <strong>Cleaning in Progress</strong>
+                </div>
+                <span>Room Keeper is currently servicing this room.</span>
               </div>
             ` : `
               <div class="p-3 bg-light rounded-3 text-muted mb-3 small">
-                <i data-lucide="check" class="text-success" style="width: 14px;"></i> Clean and prepared for check-in.
+                <i data-lucide="check-circle" class="text-success" style="width: 14px;"></i> Clean, sanitized, and ready for front-desk check-in.
               </div>
             `}
           </div>
 
           <!-- Room Status Controls -->
           <div class="pt-3 border-top d-flex justify-content-between align-items-center">
-            <span class="small text-muted" style="font-size: 11px;">Status:</span>
+            <span class="small text-muted" style="font-size: 11px;">Override Status:</span>
             <div class="btn-group btn-group-sm">
               <button class="btn btn-outline-success ${status === 'available' ? 'active' : ''}" onclick="setRoomStatusLive('${room.room_no}', 'available')" title="Mark Available">
                 Available
@@ -288,7 +483,7 @@ function renderRoomRack(rooms) {
               <button class="btn btn-outline-danger ${status === 'occupied' ? 'active' : ''}" onclick="setRoomStatusLive('${room.room_no}', 'occupied')" title="Mark Occupied">
                 Occupied
               </button>
-              <button class="btn btn-outline-warning ${status === 'maintenance' ? 'active' : ''}" onclick="setRoomStatusLive('${room.room_no}', 'maintenance')" title="Mark Cleaning">
+              <button class="btn btn-outline-warning ${status === 'maintenance' || status === 'cleaning' ? 'active' : ''}" onclick="setRoomStatusLive('${room.room_no}', 'maintenance')" title="Mark for Cleaning">
                 Cleaning
               </button>
             </div>
@@ -311,14 +506,105 @@ window.setRoomStatusLive = async function(roomNo, status) {
       alert("Could not update room status: " + error.message);
       return;
     }
-    showToast(`Room ${roomNo} status updated to ${status}.`);
+    showToast(`Room ${roomNo} status set to "${status}".`);
     loadDashboardData();
   } catch (err) {
     console.error("Room status update error:", err);
   }
 };
 
-// Render Bookings Table
+// =============================================================================
+// 5. HOUSEKEEPING QUEUE (User Guide Page 6: Room Keeper Dashboard)
+// =============================================================================
+
+function renderHousekeepingQueue(rooms) {
+  const container = document.getElementById('housekeeping-queue-grid');
+  if (!container) return;
+
+  const queue = (rooms || []).filter(r => r.status === 'maintenance' || r.status === 'cleaning');
+
+  if (queue.length === 0) {
+    container.innerHTML = `
+      <div class="col-12">
+        <div class="p-5 text-center bg-white rounded-3 border shadow-sm">
+          <div class="p-3 bg-success-subtle rounded-circle d-inline-flex text-success mb-3">
+            <i data-lucide="sparkles" style="width: 32px; height: 32px;"></i>
+          </div>
+          <h4 class="h5 font-serif fw-bold text-dark">All Rooms Cleaned &amp; Ready</h4>
+          <p class="text-muted small max-w-md mx-auto mb-0">
+            No rooms currently pending turnover. All guest sanctuaries are sanitized and ready for check-in.
+          </p>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  const roomNames = {
+    single: "Single Deluxe Room",
+    double: "Double Ocean Room",
+    suite: "Grand Luxury Suite",
+    family: "Royal Family Residence"
+  };
+
+  container.innerHTML = queue.map(room => {
+    const isCleaning = room.status === 'cleaning';
+
+    return `
+      <div class="col-md-6 col-lg-4">
+        <div class="card border-0 shadow-sm rounded-3 overflow-hidden h-100 ${isCleaning ? 'border-primary' : 'border-warning'}" style="border-top: 5px solid ${isCleaning ? 'var(--color-cleaning)' : 'var(--color-maintenance)'} !important;">
+          <div class="card-body p-4 d-flex flex-column justify-content-between">
+            <div>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                  <span class="text-muted text-uppercase fw-bold" style="font-size: 10px;">TURNOVER QUEUE</span>
+                  <h3 class="h3 font-serif fw-bold text-dark mb-0">Room ${room.room_no}</h3>
+                </div>
+                <span class="badge ${isCleaning ? 'bg-primary' : 'bg-warning text-dark'} text-uppercase fw-bold" style="font-size: 10px;">
+                  ${isCleaning ? 'Cleaning In Progress' : 'Needs Cleaning'}
+                </span>
+              </div>
+
+              <span class="small fw-semibold text-secondary d-block mb-3">
+                ${roomNames[room.room_type] || room.room_type}
+              </span>
+
+              <div class="p-3 bg-light rounded-3 border mb-3 small">
+                <span class="text-muted text-uppercase fw-bold d-block mb-1" style="font-size: 9px;">Standard Operating Checklist</span>
+                <div class="d-flex align-items-center gap-2 text-secondary mb-1">
+                  <i data-lucide="check" class="text-success" style="width: 14px;"></i> Bed linens &amp; pillowcase renewal
+                </div>
+                <div class="d-flex align-items-center gap-2 text-secondary mb-1">
+                  <i data-lucide="check" class="text-success" style="width: 14px;"></i> Luxury toiletries &amp; towel restock
+                </div>
+                <div class="d-flex align-items-center gap-2 text-secondary">
+                  <i data-lucide="check" class="text-success" style="width: 14px;"></i> Sanitize bath, minibar &amp; sea balcony
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-3 border-top">
+              ${!isCleaning ? `
+                <button class="btn btn-warning text-dark fw-bold w-100 d-flex align-items-center justify-content-center gap-2 py-2" onclick="setRoomStatusLive('${room.room_no}', 'cleaning')">
+                  <i data-lucide="play" style="width: 16px;"></i> Start Cleaning
+                </button>
+              ` : `
+                <button class="btn btn-success fw-bold w-100 d-flex align-items-center justify-content-center gap-2 py-2" onclick="setRoomStatusLive('${room.room_no}', 'available')">
+                  <i data-lucide="check-circle" style="width: 16px;"></i> Mark Available
+                </button>
+              `}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// =============================================================================
+// 6. RESERVATION LEDGER & STAY LIFECYCLE (User Guide Page 5)
+// =============================================================================
+
 function renderBookings(bookings) {
   const tbody = document.getElementById('bookings-table-body');
   if (!tbody) return;
@@ -362,16 +648,27 @@ function renderBookings(bookings) {
         </td>
         <td class="text-end">
           <div class="btn-group btn-group-sm">
-            ${status !== 'checked_in' && status !== 'checked_out' && status !== 'cancelled' ? `
+            ${status === 'pending' ? `
+              <button class="btn btn-outline-primary" onclick="handleStayAction(${b.booking_id}, 'confirmed')" title="Confirm Reservation">
+                Confirm
+              </button>
+              <button class="btn btn-outline-danger" onclick="handleStayAction(${b.booking_id}, 'cancelled')" title="Reject Reservation">
+                Reject
+              </button>
+            ` : ''}
+
+            ${status === 'confirmed' ? `
               <button class="btn btn-outline-success" onclick="handleStayAction(${b.booking_id}, 'checked_in')" title="Check-in Guest">
                 Check In
               </button>
             ` : ''}
+
             ${status === 'checked_in' ? `
-              <button class="btn btn-outline-warning" onclick="handleStayAction(${b.booking_id}, 'checked_out')" title="Check-out Guest">
+              <button class="btn btn-outline-warning" onclick="handleStayAction(${b.booking_id}, 'checked_out')" title="Check-out Guest &amp; Notify Housekeeping">
                 Check Out
               </button>
             ` : ''}
+
             <button class="btn btn-outline-secondary" onclick="viewInvoiceFromBooking(${b.booking_id})" title="Print Invoice">
               <i data-lucide="receipt" style="width: 14px;"></i>
             </button>
@@ -396,12 +693,19 @@ window.filterBookingsTable = function() {
   });
 };
 
-// Check-in / Check-out Stay Action Handler
+// Check-in / Check-out / Confirmation Action Handler
 window.handleStayAction = async function(bookingId, newStatus) {
   if (!supabaseClient) return;
 
-  const actionName = newStatus === 'checked_in' ? 'Check-in' : 'Check-out';
-  if (!confirm(`Are you sure you want to execute ${actionName} for this reservation?`)) return;
+  const actionLabels = {
+    'confirmed': 'Confirm Reservation',
+    'checked_in': 'Check-In Guest & Hand Over Key',
+    'checked_out': 'Check-Out Guest & Release Room to Housekeeping',
+    'cancelled': 'Reject / Cancel Reservation'
+  };
+
+  const actionName = actionLabels[newStatus] || newStatus;
+  if (!confirm(`Are you sure you want to execute: ${actionName}?`)) return;
 
   try {
     const { data, error } = await supabaseClient.rpc('update_stay_status', {
@@ -414,14 +718,328 @@ window.handleStayAction = async function(bookingId, newStatus) {
       return;
     }
 
-    showToast(`Reservation successfully marked as ${newStatus.replace('_', ' ')}.`);
+    if (newStatus === 'checked_out') {
+      showToast(`Guest checked out! Room ${data?.room_no} has been queued for Housekeeping.`);
+    } else {
+      showToast(`Reservation successfully updated to "${newStatus.replace('_', ' ')}".`);
+    }
+
     loadDashboardData();
   } catch (err) {
     console.error("Stay action error:", err);
   }
 };
 
-// Render Invoices Table
+// =============================================================================
+// 7. FRONT-DESK WALK-IN BOOKINGS (User Guide Page 5: Add New Booking)
+// =============================================================================
+
+window.openWalkinModal = function() {
+  const roomSelect = document.getElementById('walkin-room');
+  if (!roomSelect) return;
+
+  const availableRooms = (adminState.dashboardData.rooms || []).filter(r => r.status === 'available');
+
+  if (availableRooms.length === 0) {
+    alert("Notice: All rooms are currently occupied or in turnover. Please inspect room rack or expedite housekeeping.");
+    return;
+  }
+
+  const roomNames = {
+    single: "Single Deluxe Room",
+    double: "Double Ocean Room",
+    suite: "Grand Luxury Suite",
+    family: "Royal Family Residence"
+  };
+
+  roomSelect.innerHTML = availableRooms.map(r => `
+    <option value="${r.room_no}" data-type="${r.room_type}">
+      Room ${r.room_no} (${roomNames[r.room_type] || r.room_type})
+    </option>
+  `).join('');
+
+  // Set default dates
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const checkinInput = document.getElementById('walkin-checkin');
+  const checkoutInput = document.getElementById('walkin-checkout');
+
+  if (checkinInput) checkinInput.value = today.toISOString().split('T')[0];
+  if (checkoutInput) checkoutInput.value = tomorrow.toISOString().split('T')[0];
+
+  calculateWalkinTariff();
+
+  const modalElem = document.getElementById('walkinModal');
+  if (modalElem && window.bootstrap) {
+    const bsModal = new window.bootstrap.Modal(modalElem);
+    bsModal.show();
+  }
+};
+
+window.calculateWalkinTariff = function() {
+  const roomSelect = document.getElementById('walkin-room');
+  const periodSelect = document.getElementById('walkin-period');
+  const checkinInput = document.getElementById('walkin-checkin');
+  const checkoutInput = document.getElementById('walkin-checkout');
+  const totalDisplay = document.getElementById('walkin-calculated-total');
+
+  if (!roomSelect || !periodSelect || !checkinInput || !checkoutInput || !totalDisplay) return;
+
+  const selectedOption = roomSelect.options[roomSelect.selectedIndex];
+  const roomType = selectedOption?.dataset?.type || 'single';
+  const period = periodSelect.value || 'night';
+
+  const checkIn = new Date(checkinInput.value);
+  const checkOut = new Date(checkoutInput.value);
+
+  let duration = 1;
+  if (!isNaN(checkIn.getTime()) && !isNaN(checkOut.getTime())) {
+    const diffDays = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+    duration = diffDays > 0 ? diffDays : 1;
+  }
+
+  const basePrice = (BASE_TARIFFS[roomType] && BASE_TARIFFS[roomType][period]) || 10000;
+  const subtotal = basePrice * duration;
+  const totalWithTax = Math.round(subtotal * 1.18);
+
+  adminState.calculatedWalkinTotal = totalWithTax;
+  totalDisplay.textContent = formatLKR(totalWithTax);
+};
+
+async function handleWalkinSubmit(e) {
+  e.preventDefault();
+
+  const name = document.getElementById('walkin-name')?.value?.trim();
+  const nic = document.getElementById('walkin-nic')?.value?.trim();
+  const email = document.getElementById('walkin-email')?.value?.trim();
+  const phone = document.getElementById('walkin-phone')?.value?.trim();
+  const address = document.getElementById('walkin-address')?.value?.trim() || 'Hotel Walk-in Guest';
+  const roomNo = document.getElementById('walkin-room')?.value;
+  const period = document.getElementById('walkin-period')?.value || 'night';
+  const checkIn = document.getElementById('walkin-checkin')?.value;
+  const checkOut = document.getElementById('walkin-checkout')?.value;
+  const submitBtn = document.getElementById('walkin-submit-btn');
+
+  if (!name || !nic || !email || !phone || !roomNo || !checkIn || !checkOut) {
+    alert("Please fill in all required fields.");
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'CONFIRMING CHECK-IN...';
+  }
+
+  try {
+    const { data, error } = await supabaseClient.rpc('create_walkin_booking', {
+      p_name: name,
+      p_national_id: nic,
+      p_address: address,
+      p_email: email,
+      p_phone: phone,
+      p_room_no: roomNo,
+      p_check_in: checkIn,
+      p_check_out: checkOut,
+      p_period: period,
+      p_total_price: adminState.calculatedWalkinTotal || 11800
+    });
+
+    if (error || !data || !data.success) {
+      alert("Could not create walk-in booking: " + (data?.error || error?.message || 'Database error'));
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Confirm Check-in & Bill';
+      }
+      return;
+    }
+
+    // Close walkin modal
+    const modalElem = document.getElementById('walkinModal');
+    if (modalElem && window.bootstrap) {
+      const bsModal = window.bootstrap.Modal.getInstance(modalElem);
+      if (bsModal) bsModal.hide();
+    }
+
+    showToast(`Walk-in guest ${name} checked into Room ${roomNo}! Reference: ${data.booking_reference}`);
+
+    // Reset form
+    document.getElementById('walkin-form')?.reset();
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Confirm Check-in & Bill';
+    }
+
+    loadDashboardData();
+
+  } catch (err) {
+    console.error("Walk-in booking error:", err);
+    alert("An unexpected error occurred. Please try again.");
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Confirm Check-in & Bill';
+    }
+  }
+}
+
+// =============================================================================
+// 8. EXECUTIVE REPORTING & AUDIT (User Guide Page 7: General Manager)
+// =============================================================================
+
+// Generate Monthly Report (Calls Supabase RPC: generate_monthly_report)
+window.triggerMonthlyReport = async function(year, month) {
+  if (!supabaseClient) return;
+
+  const now = new Date();
+  const targetYear = year || now.getFullYear();
+  const targetMonth = month || (now.getMonth() + 1);
+
+  try {
+    const { data, error } = await supabaseClient.rpc('generate_monthly_report', {
+      p_year: targetYear,
+      p_month: targetMonth
+    });
+
+    if (error || !data || !data.success) {
+      alert("Could not generate monthly report: " + (error?.message || 'Database error'));
+      return;
+    }
+
+    // Populate Report Modal elements (Directly matching User Guide Page 7)
+    document.getElementById('rep-month-name').textContent = data.month_name || 'November 2026';
+    document.getElementById('rep-total-earnings').textContent = formatLKR(data.total_earnings);
+    document.getElementById('rep-total-bookings').textContent = data.total_bookings ?? 0;
+    document.getElementById('rep-unique-customers').textContent = data.unique_customers ?? 0;
+    document.getElementById('rep-subtotal').textContent = formatLKR(data.subtotal);
+    document.getElementById('rep-tax').textContent = formatLKR(data.tax_amount);
+    document.getElementById('rep-gross').textContent = formatLKR(data.total_earnings);
+
+    const generatedDateStr = new Date(data.generated_at).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+    document.getElementById('rep-generated-at').textContent = `${generatedDateStr} (SLST)`;
+
+    // Open Report Modal
+    const modalElem = document.getElementById('monthlyReportModal');
+    if (modalElem && window.bootstrap) {
+      const bsModal = new window.bootstrap.Modal(modalElem);
+      bsModal.show();
+    }
+
+  } catch (err) {
+    console.error("Monthly report error:", err);
+    alert("Error generating monthly report.");
+  }
+};
+
+// Manager Sub-view Switcher (Smooth focus on Customers or Salaries)
+window.switchManagerSubView = function(view) {
+  if (view === 'customers') {
+    const custSec = document.getElementById('manager-customers-section');
+    if (custSec) {
+      custSec.scrollIntoView({ behavior: 'smooth' });
+      custSec.classList.add('bg-warning-subtle');
+      setTimeout(() => custSec.classList.remove('bg-warning-subtle'), 1500);
+    }
+  } else if (view === 'salaries') {
+    const staffTable = document.getElementById('staff-table-body');
+    if (staffTable) {
+      staffTable.scrollIntoView({ behavior: 'smooth' });
+      staffTable.classList.add('bg-warning-subtle');
+      setTimeout(() => staffTable.classList.remove('bg-warning-subtle'), 1500);
+    }
+  }
+};
+
+// Render Staff Directory & Login Audit History (Page 6 & 7)
+function renderStaffAndLogins(staff, logins) {
+  const staffTbody = document.getElementById('staff-table-body');
+  const loginsTbody = document.getElementById('login-history-table-body');
+
+  if (staffTbody) {
+    staffTbody.innerHTML = (staff && staff.length > 0) ? staff.map(emp => `
+      <tr>
+        <td>
+          <strong class="d-block text-dark">${emp.name}</strong>
+          <span class="text-muted small">NIC: ${emp.national_id || 'N/A'}</span>
+        </td>
+        <td>
+          <span class="badge bg-light text-dark border">${emp.designation}</span>
+        </td>
+        <td class="small">
+          <span class="d-block">${emp.email}</span>
+          <span class="text-muted">${emp.phone}</span>
+        </td>
+        <td class="text-end fw-bold font-serif text-success">
+          ${formatLKR(emp.basic_salary)}
+        </td>
+      </tr>
+    `).join('') : `<tr><td colspan="4" class="text-center text-muted">No staff records.</td></tr>`;
+  }
+
+  if (loginsTbody) {
+    loginsTbody.innerHTML = (logins && logins.length > 0) ? logins.map(log => {
+      const timeStr = log.login_time ? new Date(log.login_time).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }) : 'N/A';
+      return `
+        <tr>
+          <td><strong class="text-dark">${log.employee_name}</strong></td>
+          <td class="text-muted">${log.designation}</td>
+          <td class="text-end text-muted font-monospace">${timeStr}</td>
+        </tr>
+      `;
+    }).join('') : `<tr><td colspan="3" class="text-center text-muted">No login history recorded.</td></tr>`;
+  }
+}
+
+// Render Registered Customers Directory (Page 7: View Customers)
+function renderCustomers(customers) {
+  const custTbody = document.getElementById('customers-table-body');
+  const countBadge = document.getElementById('customer-count-badge');
+  if (!custTbody) return;
+
+  if (countBadge) {
+    countBadge.textContent = `${(customers || []).length} Registered Guests`;
+  }
+
+  if (!customers || customers.length === 0) {
+    custTbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No registered customers found.</td></tr>`;
+    return;
+  }
+
+  custTbody.innerHTML = customers.map(c => `
+    <tr>
+      <td><span class="badge bg-light text-muted border font-monospace">CUST-${String(c.customer_id).padStart(4, '0')}</span></td>
+      <td><strong class="text-dark">${c.name}</strong></td>
+      <td><span class="font-monospace text-secondary">${c.national_id || 'N/A'}</span></td>
+      <td class="small">
+        <span class="d-block">${c.email}</span>
+        <span class="text-muted">${c.phone}</span>
+      </td>
+      <td class="small text-muted">${c.address || 'Standard Guest'}</td>
+      <td class="text-end">
+        <span class="badge bg-primary-subtle text-primary fw-bold">${c.total_bookings || 0} Bookings</span>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// =============================================================================
+// 9. INVOICES & OFFICIAL PRINTABLE RECEIPTS
+// =============================================================================
+
 function renderInvoices(invoices) {
   const tbody = document.getElementById('invoices-table-body');
   if (!tbody) return;
@@ -452,46 +1070,6 @@ function renderInvoices(invoices) {
       </tr>
     `;
   }).join('');
-}
-
-// Render Staff Directory & Login Audit History
-function renderStaffAndLogins(staff, logins) {
-  const staffTbody = document.getElementById('staff-table-body');
-  const loginsTbody = document.getElementById('login-history-table-body');
-
-  if (staffTbody) {
-    staffTbody.innerHTML = (staff && staff.length > 0) ? staff.map(emp => `
-      <tr>
-        <td>
-          <strong class="d-block">${emp.name}</strong>
-          <span class="text-muted small">ID: EMP-${String(emp.employee_id).padStart(4, '0')}</span>
-        </td>
-        <td>
-          <span class="badge bg-light text-dark border">${emp.designation}</span>
-        </td>
-        <td class="small">
-          <span class="d-block">${emp.email}</span>
-          <span class="text-muted">${emp.phone}</span>
-        </td>
-        <td class="text-end fw-bold font-serif text-success">
-          ${formatLKR(emp.basic_salary)}
-        </td>
-      </tr>
-    `).join('') : `<tr><td colspan="4" class="text-center text-muted">No staff records.</td></tr>`;
-  }
-
-  if (loginsTbody) {
-    loginsTbody.innerHTML = (logins && logins.length > 0) ? logins.map(log => {
-      const timeStr = log.login_time ? new Date(log.login_time).toLocaleString('en-US') : 'N/A';
-      return `
-        <tr>
-          <td><strong>${log.employee_name}</strong></td>
-          <td class="text-muted">${log.designation}</td>
-          <td class="text-end text-muted font-monospace">${timeStr}</td>
-        </tr>
-      `;
-    }).join('') : `<tr><td colspan="3" class="text-center text-muted">No login history.</td></tr>`;
-  }
 }
 
 // Quick Helper to trigger invoice modal from booking row
@@ -540,7 +1118,10 @@ window.openInvoiceModal = function(inv) {
   }
 };
 
-// Initialization on DOMContentLoaded
+// =============================================================================
+// 10. DOM INITIALIZATION
+// =============================================================================
+
 document.addEventListener('DOMContentLoaded', () => {
   initLiveClock();
 
@@ -548,7 +1129,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const loginForm = document.getElementById('staff-login-form');
   loginForm?.addEventListener('submit', handleLoginSubmit);
 
-  // Check existing session
+  // Attach walk-in form handler
+  const walkinForm = document.getElementById('walkin-form');
+  walkinForm?.addEventListener('submit', handleWalkinSubmit);
+
+  // Check existing session in sessionStorage
   const savedSession = sessionStorage.getItem('blue_moon_staff');
   if (savedSession) {
     try {
@@ -561,4 +1146,3 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (window.lucide) window.lucide.createIcons();
 });
-

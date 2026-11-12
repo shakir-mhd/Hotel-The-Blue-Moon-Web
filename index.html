@@ -871,7 +871,10 @@
               <input type="date" id="booking-checkout" class="form-control">
             </div>
             <div class="col-md-6">
-              <label class="form-label small font-sans fw-bold text-uppercase">Room Type</label>
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="form-label small font-sans fw-bold text-uppercase mb-0">Room Type</label>
+                <button type="button" class="btn btn-sm btn-outline-warning rounded-circle d-inline-flex align-items-center justify-content-center fw-bold" style="width: 22px; height: 22px; font-size: 11px; padding: 0;" onclick="openTariffHelpModal()" title="View Room Tariffs & Price Details">?</button>
+              </div>
               <select id="booking-room-type" class="form-select">
                 <option value="single">Single Room (LKR 10,000 / Night)</option>
                 <option value="double">Double Room (LKR 20,000 / Night)</option>
@@ -1033,6 +1036,109 @@
               <i data-lucide="printer" style="width: 14px;"></i> Print Official Receipt
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ==========================================
+       ROOM PRICE DETAILS MODAL (User Guide Page 3: Tariff Inquiry '?')
+       ========================================== -->
+  <div id="tariff-help-modal" class="modal-backdrop-custom" style="z-index: 1070;" onclick="handleTariffModalBackdrop(event)">
+    <div class="bg-white rounded-3 shadow-lg overflow-hidden w-100" style="max-width: 780px;" onclick="event.stopPropagation()">
+      <div class="p-4 bg-dark text-white d-flex justify-content-between align-items-center" style="background-color: var(--resort-blue-950) !important;">
+        <div class="d-flex align-items-center">
+          <div class="p-2 bg-warning text-dark rounded-circle me-3">
+            <i data-lucide="help-circle" style="width: 20px; height: 20px;"></i>
+          </div>
+          <div>
+            <h4 class="h5 font-serif fw-bold mb-0">Room Price &amp; Tariff Details</h4>
+            <span class="small text-white-50">Hotel The Blue Moon • Unawatuna, Sri Lanka Rate Card</span>
+          </div>
+        </div>
+        <button class="btn-close btn-close-white" onclick="closeTariffHelpModal()"></button>
+      </div>
+
+      <div class="p-4 p-md-5">
+        <p class="small text-muted mb-4">
+          All accommodations feature custom seaside interiors, ultra-fast WiFi, complimentary pool &amp; beach club privileges, and bespoke luxury amenities. Compare stay packages below:
+        </p>
+
+        <div class="table-responsive rounded border mb-4">
+          <table class="table align-middle mb-0">
+            <thead class="table-light small text-uppercase font-sans">
+              <tr>
+                <th>Room Type</th>
+                <th>Capacity</th>
+                <th class="text-end">One Night (Rs.)</th>
+                <th class="text-end">Full Day 24H (Rs.)</th>
+                <th class="text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <strong class="d-block font-serif text-dark">Single Room</strong>
+                  <span class="small text-muted">Solo luxury &amp; private workstation</span>
+                </td>
+                <td class="small text-muted">1 Guest</td>
+                <td class="text-end font-monospace fw-bold text-dark">Rs. 10,000</td>
+                <td class="text-end font-monospace fw-bold text-success">Rs. 20,000</td>
+                <td class="text-center">
+                  <button class="btn btn-sm btn-outline-dark" onclick="selectRoomFromHelp('single')">Select</button>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <strong class="d-block font-serif text-dark">Double Room</strong>
+                  <span class="small text-muted">Couples ocean retreat &amp; balcony</span>
+                </td>
+                <td class="small text-muted">2 Guests</td>
+                <td class="text-end font-monospace fw-bold text-dark">Rs. 20,000</td>
+                <td class="text-end font-monospace fw-bold text-success">Rs. 40,000</td>
+                <td class="text-center">
+                  <button class="btn btn-sm btn-outline-dark" onclick="selectRoomFromHelp('double')">Select</button>
+                </td>
+              </tr>
+              <tr class="table-warning-subtle">
+                <td>
+                  <strong class="d-block font-serif text-dark">Grand Suite</strong>
+                  <span class="small text-warning-emphasis fw-semibold">Ocean-view jacuzzi &amp; personal butler</span>
+                </td>
+                <td class="small text-muted">2-3 Guests</td>
+                <td class="text-end font-monospace fw-bold text-dark">Rs. 50,000</td>
+                <td class="text-end font-monospace fw-bold text-success">Rs. 80,000</td>
+                <td class="text-center">
+                  <button class="btn btn-sm btn-warning text-dark fw-bold" onclick="selectRoomFromHelp('suite')">Select</button>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <strong class="d-block font-serif text-dark">Family Residence</strong>
+                  <span class="small text-muted">Interconnecting living suite &amp; kitchen</span>
+                </td>
+                <td class="small text-muted">4-6 Guests</td>
+                <td class="text-end font-monospace fw-bold text-dark">Rs. 100,000</td>
+                <td class="text-end font-monospace fw-bold text-success">Rs. 150,000</td>
+                <td class="text-center">
+                  <button class="btn btn-sm btn-outline-dark" onclick="selectRoomFromHelp('family')">Select</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="p-3 bg-light rounded-3 border small text-muted mb-4">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <i data-lucide="info" style="width: 16px;" class="text-warning"></i>
+            <strong class="text-dark">Billing &amp; Tax Policy:</strong>
+          </div>
+          <span>Rates are quoted in Sri Lankan Rupees (Rs. / LKR). A standard 18% service charge &amp; government VAT is computed upon booking. Full Day 24H Flex bookings feature 24-hour round-the-clock check-in/out freedom and complimentary buffet dining.</span>
+        </div>
+
+        <div class="d-flex justify-content-end">
+          <button type="button" class="btn btn-resort-navy px-4" onclick="closeTariffHelpModal()">Close Rate Card</button>
         </div>
       </div>
     </div>
