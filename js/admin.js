@@ -669,6 +669,10 @@ function renderBookings(bookings) {
               </button>
             ` : ''}
 
+            <button class="btn btn-outline-success" onclick="sendWhatsAppConfirmation(${b.booking_id})" title="Send 1-Click WhatsApp Confirmation to Guest">
+              <i data-lucide="message-circle" style="width: 14px;"></i>
+            </button>
+
             <button class="btn btn-outline-secondary" onclick="viewInvoiceFromBooking(${b.booking_id})" title="Print Invoice">
               <i data-lucide="receipt" style="width: 14px;"></i>
             </button>
@@ -678,6 +682,49 @@ function renderBookings(bookings) {
     `;
   }).join('');
 }
+
+// 1-Click WhatsApp Reservation Messenger (100% Zero-Cost Academic Integration)
+window.sendWhatsAppConfirmation = function(bookingId) {
+  const booking = adminState.dashboardData.bookings.find(b => b.booking_id === bookingId);
+  if (!booking) return;
+
+  // Normalize phone number (Default to Sri Lanka +94)
+  let rawPhone = (booking.guest_phone || '').replace(/[^0-9]/g, '');
+  if (rawPhone.startsWith('0')) {
+    rawPhone = '94' + rawPhone.substring(1);
+  } else if (!rawPhone.startsWith('94') && rawPhone.length === 9) {
+    rawPhone = '94' + rawPhone;
+  }
+  if (!rawPhone) rawPhone = '94717224755';
+
+  const roomNames = {
+    single: "Single Deluxe Room",
+    double: "Double Ocean Room",
+    suite: "Grand Luxury Suite",
+    family: "Royal Family Residence"
+  };
+  const roomTitle = roomNames[booking.room_type] || `Room ${booking.room_no || 'TBD'}`;
+
+  const messageText = 
+    `*HOTEL THE BLUE MOON — RESERVATION CONFIRMATION*\n\n` +
+    `Dear *${booking.guest_name}*,\n` +
+    `Greetings from Hotel The Blue Moon, Unawatuna, Galle, Sri Lanka!\n\n` +
+    `Your stay reservation has been officially confirmed:\n` +
+    `• *Booking Reference:* ${booking.booking_reference}\n` +
+    `• *Assigned Room:* Room ${booking.room_no || 'TBD'} (${roomTitle})\n` +
+    `• *Check-In Date:* ${booking.check_in_date}\n` +
+    `• *Check-Out Date:* ${booking.check_out_date}\n` +
+    `• *Stay Package:* ${booking.period === 'day' ? '24H Flex Stay' : 'One Night Stay'}\n` +
+    `• *Total Billed:* ${formatLKR(booking.invoice_amount)} (Inc 18% VAT)\n\n` +
+    `Check-in commences from 2:00 PM standard resort hours. We look forward to providing you an unforgettable 7-star coastal experience.\n\n` +
+    `*Front Desk Concierge*\n` +
+    `Hotel The Blue Moon Resort & Spa\n` +
+    `2855 Beach Side Rd, Unawatuna, Galle, Sri Lanka\n` +
+    `Tel: +94 717 224 755 | Web: https://blue-moon-web-virid.vercel.app`;
+
+  const waUrl = `https://wa.me/${rawPhone}?text=${encodeURIComponent(messageText)}`;
+  window.open(waUrl, '_blank');
+};
 
 // Filter Bookings by Search Term
 window.filterBookingsTable = function() {
