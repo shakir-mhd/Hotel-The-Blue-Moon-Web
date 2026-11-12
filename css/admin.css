@@ -1,0 +1,238 @@
+/* ==========================================================================
+   Hotel The Blue Moon - Staff Operations Hub Styling (admin.css)
+   Built with Bootstrap 5 + Vanilla CSS3
+   ========================================================================== */
+
+:root {
+  --resort-blue-950: #0c1a30;
+  --resort-blue-900: #1e3054;
+  --resort-blue-800: #315491;
+  --resort-blue-50:  #f2f7fc;
+  --resort-gold-500: #b8813d;
+  --resort-gold-400: #c59a58;
+  --resort-gold-300: #d5b780;
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --color-available: #10b981;
+  --color-occupied: #e11d48;
+  --color-maintenance: #f59e0b;
+}
+
+body.admin-body {
+  background-color: #f8fafc;
+  color: #1e293b;
+  font-family: var(--font-sans);
+  min-height: 100vh;
+}
+
+/* Auth Container */
+.auth-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0c1a30 0%, #1e3054 100%);
+  padding: 1.5rem;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(12, 26, 48, 0.4);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.auth-header {
+  background: var(--resort-blue-950);
+  color: #ffffff;
+  padding: 2rem;
+  text-align: center;
+  position: relative;
+}
+
+/* Dashboard Topbar */
+.admin-navbar {
+  background: var(--resort-blue-950);
+  border-bottom: 2px solid var(--resort-gold-500);
+  padding: 0.75rem 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+}
+
+.admin-nav-tabs .nav-link {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.admin-nav-tabs .nav-link:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.admin-nav-tabs .nav-link.active {
+  color: var(--resort-gold-300);
+  background: rgba(184, 129, 61, 0.15);
+}
+
+/* Metric Stats Cards */
+.stat-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.06);
+}
+
+/* Room Rack Cards */
+.room-card {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  transition: all 0.25s ease;
+  position: relative;
+}
+
+.room-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -8px rgba(12, 26, 48, 0.12);
+}
+
+.room-card.status-available {
+  border-top: 5px solid var(--color-available);
+}
+
+.room-card.status-occupied {
+  border-top: 5px solid var(--color-occupied);
+  background: #fffdfd;
+}
+
+.room-card.status-maintenance {
+  border-top: 5px solid var(--color-maintenance);
+  background: #fffdf7;
+}
+
+.room-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.35rem 0.65rem;
+  border-radius: 20px;
+}
+
+.badge-available {
+  background-color: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.badge-occupied {
+  background-color: #fff1f2;
+  color: #be123c;
+  border: 1px solid #fecdd3;
+}
+
+.badge-maintenance {
+  background-color: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+/* Data Tables */
+.admin-table {
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.admin-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 2px solid #e2e8f0;
+  padding: 1rem;
+}
+
+.admin-table td {
+  padding: 1rem;
+  vertical-align: middle;
+  font-size: 0.875rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.admin-table tr:hover td {
+  background-color: #f8fafc;
+}
+
+/* Invoice Printable Template */
+.invoice-paper {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 2.5rem;
+  max-width: 720px;
+  margin: 0 auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+}
+
+.invoice-header {
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.invoice-stamp {
+  border: 2px dashed #10b981;
+  color: #10b981;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  display: inline-block;
+  transform: rotate(-5deg);
+  letter-spacing: 0.1em;
+}
+
+/* Print Handling */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-invoice-container, #printable-invoice-container * {
+    visibility: visible;
+  }
+  #printable-invoice-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    border: none;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

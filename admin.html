@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Operations Hub | Hotel The Blue Moon</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+  <!-- Google Fonts Import -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Custom Admin Styling -->
+  <link rel="stylesheet" href="/css/admin.css">
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Supabase JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="admin-body">
+
+  <!-- =========================================================================
+       1. STAFF AUTHENTICATION SCREEN (Shown when logged out)
+       ========================================================================= -->
+  <div id="admin-auth-view" class="auth-wrapper">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="d-inline-flex p-3 rounded-circle bg-white-10 mb-3" style="background: rgba(255, 255, 255, 0.08);">
+          <i data-lucide="moon" class="text-warning" style="width: 36px; height: 36px; transform: rotate(-12deg);"></i>
+        </div>
+        <h3 class="h4 font-serif fw-bold text-white mb-1">Hotel The Blue Moon</h3>
+        <span class="text-warning text-uppercase tracking-wider small font-sans fw-semibold" style="font-size: 11px;">Staff Operations Hub</span>
+      </div>
+
+      <div class="p-4 p-md-5">
+        <div id="login-error-alert" class="alert alert-danger py-2 small d-none" role="alert"></div>
+
+        <form id="staff-login-form">
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-uppercase text-secondary">Username</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light text-muted border-end-0"><i data-lucide="user" style="width: 16px;"></i></span>
+              <input type="text" id="login-username" class="form-control border-start-0" placeholder="e.g. admin or reception" required autocomplete="username">
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label small fw-bold text-uppercase text-secondary">Password</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light text-muted border-end-0"><i data-lucide="lock" style="width: 16px;"></i></span>
+              <input type="password" id="login-password" class="form-control border-start-0" placeholder="••••••••••••" required autocomplete="current-password">
+            </div>
+          </div>
+
+          <button type="submit" id="login-submit-btn" class="btn btn-dark w-100 py-2 fw-bold text-uppercase" style="background-color: var(--resort-blue-950);">
+            SIGN IN TO HUB
+          </button>
+        </form>
+
+        <!-- Quick Demo Switcher -->
+        <div class="mt-4 pt-3 border-top text-center">
+          <span class="small text-muted d-block mb-2" style="font-size: 11px;">Quick Demo Staff Credentials:</span>
+          <div class="d-flex justify-content-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillStaffDemo('admin', 'AdminBlueMoon2026!')">
+              Manager (admin)
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillStaffDemo('reception', 'BlueMoonStaff2026!')">
+              Front Desk (reception)
+            </button>
+          </div>
+        </div>
+
+        <div class="text-center mt-4">
+          <a href="/" class="small text-decoration-none text-secondary">
+            ← Return to Guest Website
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- =========================================================================
+       2. MAIN OPERATIONS DASHBOARD (Shown when authenticated)
+       ========================================================================= -->
+  <div id="admin-dashboard-view" class="d-none">
+    
+    <!-- Top Navigation Bar -->
+    <nav class="admin-navbar">
+      <div class="container-fluid d-flex flex-wrap align-items-center justify-content-between gap-3">
+        
+        <!-- Brand & Clock -->
+        <div class="d-flex align-items-center gap-3">
+          <div class="d-flex align-items-center">
+            <i data-lucide="moon" class="text-warning me-2" style="width: 24px; height: 24px;"></i>
+            <span class="font-serif fw-bold text-white fs-5 leading-none">The Blue Moon</span>
+            <span class="badge bg-warning text-dark ms-2 text-uppercase fw-bold" style="font-size: 9px;">Hub</span>
+          </div>
+          <div class="vr bg-white opacity-25 d-none d-md-block" style="height: 24px;"></div>
+          <div class="small text-white-50 d-none d-md-block" id="live-clock">--:--:-- GMT+5:30</div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <ul class="nav admin-nav-tabs gap-1" id="hubNavTabs">
+          <li class="nav-item">
+            <a class="nav-link active" data-tab="room-rack" onclick="switchAdminTab('room-rack')">
+              <i data-lucide="layout-grid" class="me-1" style="width: 16px;"></i> Room Rack
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" data-tab="bookings" onclick="switchAdminTab('bookings')">
+              <i data-lucide="calendar" class="me-1" style="width: 16px;"></i> Bookings &amp; Guests
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" data-tab="invoices" onclick="switchAdminTab('invoices')">
+              <i data-lucide="receipt" class="me-1" style="width: 16px;"></i> Invoices &amp; Billing
+            </a>
+          </li>
+          <li class="nav-item" id="nav-item-staff">
+            <a class="nav-link" data-tab="staff" onclick="switchAdminTab('staff')">
+              <i data-lucide="users" class="me-1" style="width: 16px;"></i> Staff &amp; Payroll
+            </a>
+          </li>
+        </ul>
+
+        <!-- Staff Profile & Logout -->
+        <div class="d-flex align-items-center gap-2">
+          <div class="text-end d-none d-sm-block">
+            <span class="d-block small text-white fw-bold leading-tight" id="staff-display-name">Mohomed Shakir</span>
+            <span class="small text-warning" style="font-size: 10px;" id="staff-display-role">General Manager</span>
+          </div>
+          <a href="/" target="_blank" class="btn btn-sm btn-outline-light d-none d-lg-inline-block" title="Preview Live Guest Website">
+            <i data-lucide="external-link" style="width: 14px;"></i> Guest Site
+          </a>
+          <button class="btn btn-sm btn-danger d-flex align-items-center gap-1" onclick="handleStaffLogout()" title="Sign Out">
+            <i data-lucide="log-out" style="width: 14px;"></i> <span class="d-none d-md-inline">Logout</span>
+          </button>
+        </div>
+
+      </div>
+    </nav>
+
+    <!-- Main Content Container -->
+    <main class="container-fluid py-4 px-lg-4">
+      
+      <!-- Live Metrics Ribbon -->
+      <div class="row g-3 mb-4">
+        <div class="col-xl-3 col-sm-6">
+          <div class="stat-card d-flex align-items-center justify-content-between">
+            <div>
+              <span class="text-muted small fw-bold text-uppercase d-block mb-1">Available Rooms</span>
+              <h3 class="h3 fw-bold text-success mb-0" id="stat-available">0</h3>
+            </div>
+            <div class="p-3 bg-success-subtle rounded-3 text-success">
+              <i data-lucide="check-circle" style="width: 24px; height: 24px;"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-xl-3 col-sm-6">
+          <div class="stat-card d-flex align-items-center justify-content-between">
+            <div>
+              <span class="text-muted small fw-bold text-uppercase d-block mb-1">Occupied Rooms</span>
+              <h3 class="h3 fw-bold text-danger mb-0" id="stat-occupied">0</h3>
+            </div>
+            <div class="p-3 bg-danger-subtle rounded-3 text-danger">
+              <i data-lucide="door-closed" style="width: 24px; height: 24px;"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-xl-3 col-sm-6">
+          <div class="stat-card d-flex align-items-center justify-content-between">
+            <div>
+              <span class="text-muted small fw-bold text-uppercase d-block mb-1">Housekeeping / Cleaning</span>
+              <h3 class="h3 fw-bold text-warning mb-0" id="stat-maintenance">0</h3>
+            </div>
+            <div class="p-3 bg-warning-subtle rounded-3 text-warning">
+              <i data-lucide="sparkles" style="width: 24px; height: 24px;"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-xl-3 col-sm-6">
+          <div class="stat-card d-flex align-items-center justify-content-between">
+            <div>
+              <span class="text-muted small fw-bold text-uppercase d-block mb-1">Invoiced Revenue</span>
+              <h3 class="h4 font-serif fw-bold text-dark mb-0" id="stat-revenue">LKR 0</h3>
+            </div>
+            <div class="p-3 bg-primary-subtle rounded-3 text-primary">
+              <i data-lucide="wallet" style="width: 24px; height: 24px;"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toast Notification Container -->
+      <div id="admin-toast" class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
+        <div id="toast-message-box" class="toast align-items-center text-white bg-dark border-0" role="alert" aria-live="assertive" aria-atomic="true">
+          <div class="d-flex">
+            <div class="toast-body small" id="toast-body-text">Ready.</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- =====================================================================
+           TAB PANE 1: VISUAL ROOM RACK
+           ===================================================================== -->
+      <section id="pane-room-rack" class="admin-tab-pane">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
+          <div>
+            <h4 class="h5 font-serif fw-bold mb-0">Front-Desk Visual Room Rack</h4>
+            <p class="small text-muted mb-0">Monitor live room statuses, current in-house guests, and manage housekeeping.</p>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadDashboardData()">
+              <i data-lucide="refresh-cw" style="width: 14px;"></i> Refresh
+            </button>
+          </div>
+        </div>
+
+        <!-- Room Cards Grid -->
+        <div class="row g-4" id="room-rack-grid">
+          <!-- Rendered dynamically by js/admin.js -->
+        </div>
+      </section>
+
+
+      <!-- =====================================================================
+           TAB PANE 2: BOOKINGS & GUEST LEDGER
+           ===================================================================== -->
+      <section id="pane-bookings" class="admin-tab-pane d-none">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
+          <div>
+            <h4 class="h5 font-serif fw-bold mb-0">Reservation Ledger &amp; Check-ins</h4>
+            <p class="small text-muted mb-0">Review guest bookings, execute check-ins/outs, and generate invoices.</p>
+          </div>
+          <div class="d-flex gap-2">
+            <input type="text" id="booking-search-input" class="form-control form-control-sm" placeholder="Search reference or guest..." style="max-width: 260px;" oninput="filterBookingsTable()">
+          </div>
+        </div>
+
+        <div class="admin-table shadow-sm table-responsive">
+          <table class="table mb-0 align-middle">
+            <thead>
+              <tr>
+                <th>Reference</th>
+                <th>Guest Information</th>
+                <th>Room #</th>
+                <th>Stay Dates</th>
+                <th>Duration</th>
+                <th>Amount (LKR)</th>
+                <th>Status</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="bookings-table-body">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+
+      <!-- =====================================================================
+           TAB PANE 3: INVOICES & BILLING
+           ===================================================================== -->
+      <section id="pane-invoices" class="admin-tab-pane d-none">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
+          <div>
+            <h4 class="h5 font-serif fw-bold mb-0">Invoices &amp; Financial Ledger</h4>
+            <p class="small text-muted mb-0">Official billing records, tax documentation, and printable receipts.</p>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary" onclick="loadDashboardData()">
+            <i data-lucide="refresh-cw" style="width: 14px;"></i> Refresh
+          </button>
+        </div>
+
+        <div class="admin-table shadow-sm table-responsive">
+          <table class="table mb-0 align-middle">
+            <thead>
+              <tr>
+                <th>Invoice #</th>
+                <th>Booking Reference</th>
+                <th>Guest Name</th>
+                <th>Invoice Date</th>
+                <th>Tax (18%)</th>
+                <th>Total Invoiced</th>
+                <th class="text-end">Receipt</th>
+              </tr>
+            </thead>
+            <tbody id="invoices-table-body">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+
+      <!-- =====================================================================
+           TAB PANE 4: STAFF & PAYROLL (Manager Access)
+           ===================================================================== -->
+      <section id="pane-staff" class="admin-tab-pane d-none">
+        <div class="mb-3">
+          <h4 class="h5 font-serif fw-bold mb-0">Staff Roster &amp; Payroll Management</h4>
+          <p class="small text-muted mb-0">Employee directory, compensation tracking, and security audit log.</p>
+        </div>
+
+        <div class="row g-4">
+          <!-- Staff & Salaries Table -->
+          <div class="col-lg-7">
+            <div class="admin-table shadow-sm p-4 h-100">
+              <h5 class="h6 font-serif fw-bold text-dark mb-3">Employee Directory &amp; Monthly Salaries</h5>
+              <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Employee</th>
+                      <th>Designation</th>
+                      <th>Contact</th>
+                      <th class="text-end">Basic Salary</th>
+                    </tr>
+                  </thead>
+                  <tbody id="staff-table-body">
+                    <!-- Rendered dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Login Audit Log -->
+          <div class="col-lg-5">
+            <div class="admin-table shadow-sm p-4 h-100">
+              <h5 class="h6 font-serif fw-bold text-dark mb-3">Recent Security Login History</h5>
+              <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+                <table class="table table-sm align-middle mb-0" style="font-size: 12px;">
+                  <thead>
+                    <tr>
+                      <th>Staff Member</th>
+                      <th>Designation</th>
+                      <th class="text-end">Login Time</th>
+                    </tr>
+                  </thead>
+                  <tbody id="login-history-table-body">
+                    <!-- Rendered dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+
+  <!-- =========================================================================
+       3. OFFICIAL PRINTABLE INVOICE MODAL
+       ========================================================================= -->
+  <div class="modal fade" id="invoiceModal" tabindex="-1" aria-labelledby="invoiceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-dark text-white no-print" style="background-color: var(--resort-blue-950) !important;">
+          <h5 class="modal-title font-serif" id="invoiceModalLabel">Official Guest Invoice &amp; Receipt</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body p-4 p-md-5">
+          <div id="printable-invoice-container" class="invoice-paper">
+            
+            <!-- Invoice Header -->
+            <div class="invoice-header d-flex justify-content-between align-items-start">
+              <div>
+                <div class="d-flex align-items-center mb-1">
+                  <i data-lucide="moon" class="text-warning me-2" style="width: 24px; height: 24px;"></i>
+                  <h3 class="h4 font-serif fw-bold mb-0">Hotel The Blue Moon</h3>
+                </div>
+                <span class="text-muted small d-block">Luxury Seaside Resort &amp; Spa</span>
+                <span class="text-muted small d-block">2855 Beach Side Rd, Unawatuna, Galle, Sri Lanka</span>
+                <span class="text-muted small d-block">Tel: +94 717 224 755 | Email: shakirvta01@gmail.com</span>
+              </div>
+              <div class="text-end">
+                <span class="badge bg-light text-dark border px-3 py-2 font-monospace fs-6 d-block mb-2" id="inv-modal-number">INV-000000</span>
+                <div class="invoice-stamp">PAID &amp; CONFIRMED</div>
+              </div>
+            </div>
+
+            <!-- Guest & Stay Metadata -->
+            <div class="row g-3 py-3 border-bottom mb-4 small">
+              <div class="col-sm-6">
+                <span class="text-muted text-uppercase d-block fw-bold" style="font-size: 10px;">Billed To (Guest)</span>
+                <strong class="d-block fs-6" id="inv-modal-guest-name">Guest Name</strong>
+                <span class="text-muted d-block" id="inv-modal-guest-email">guest@example.com</span>
+                <span class="text-muted d-block" id="inv-modal-guest-phone">+94 000 000 000</span>
+              </div>
+              <div class="col-sm-6 text-sm-end">
+                <span class="text-muted text-uppercase d-block fw-bold" style="font-size: 10px;">Reservation Details</span>
+                <div>Booking Ref: <strong class="font-monospace text-primary" id="inv-modal-booking-ref">BMN-000000-2026</strong></div>
+                <div>Invoice Date: <span id="inv-modal-date">2026-11-12</span></div>
+                <div>Stay Duration: <span id="inv-modal-stay-period">Night Stay</span></div>
+              </div>
+            </div>
+
+            <!-- Line Items Table -->
+            <table class="table align-middle mb-4">
+              <thead class="table-light">
+                <tr class="small text-uppercase">
+                  <th>Description</th>
+                  <th class="text-center">Dates</th>
+                  <th class="text-end">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <strong class="d-block" id="inv-modal-room-type">Suite Room</strong>
+                    <span class="small text-muted" id="inv-modal-room-no">Assigned Room: 301</span>
+                  </td>
+                  <td class="text-center small" id="inv-modal-dates">2026-12-10 → 2026-12-14</td>
+                  <td class="text-end fw-bold" id="inv-modal-subtotal">LKR 200,000</td>
+                </tr>
+              </tbody>
+              <tfoot class="border-top">
+                <tr class="small text-muted">
+                  <td colspan="2" class="text-end">Resort Service &amp; VAT (18%):</td>
+                  <td class="text-end" id="inv-modal-tax">LKR 36,000</td>
+                </tr>
+                <tr class="h5 fw-bold text-dark">
+                  <td colspan="2" class="text-end">Final Paid Amount:</td>
+                  <td class="text-end text-success font-serif" id="inv-modal-total">LKR 236,000</td>
+                </tr>
+              </tfoot>
+            </table>
+
+            <!-- Footer Notes -->
+            <div class="pt-4 mt-4 border-top text-center small text-muted">
+              <p class="mb-1">Thank you for choosing Hotel The Blue Moon for your stay in Sri Lanka.</p>
+              <p class="mb-0" style="font-size: 10px;">This document serves as an official electronic receipt. Reg No: LK-80000-BMN</p>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="modal-footer no-print">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" onclick="window.print()">
+            <i data-lucide="printer" style="width: 16px;"></i> Print / Save PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Bootstrap 5 JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Admin Application Logic -->
+  <script type="module" src="/js/admin.js"></script>
+</body>
+</html>

@@ -580,6 +580,190 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('contact-success-msg')?.classList.add('d-none');
   };
 
+  // State for last looked-up reservation
+  let currentLookupBooking = null;
+
+  window.openLookupModal = function() {
+    document.getElementById('lookup-modal')?.classList.add('active');
+    document.getElementById('lookup-alert')?.classList.add('d-none');
+    document.getElementById('lookup-result-card')?.classList.add('d-none');
+    if (window.lucide) window.lucide.createIcons();
+  };
+
+  window.closeLookupModal = function() {
+    document.getElementById('lookup-modal')?.classList.remove('active');
+  };
+
+  // Guest Lookup Submission Handler
+  const lookupForm = document.getElementById('guest-lookup-form');
+  lookupForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const ref = document.getElementById('lookup-ref')?.value?.trim();
+    const contact = document.getElementById('lookup-contact')?.value?.trim();
+    const alertBox = document.getElementById('lookup-alert');
+    const resultCard = document.getElementById('lookup-result-card');
+    const submitBtn = document.getElementById('lookup-submit-btn');
+
+    if (!ref || !contact) return;
+
+    if (alertBox) alertBox.classList.add('d-none');
+    if (resultCard) resultCard.classList.add('d-none');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'SEARCHING...';
+    }
+
+    try {
+      if (!supabaseClient) throw new Error("Supabase is not initialized.");
+
+      const { data, error } = await supabaseClient.rpc('get_booking_by_reference', {
+        p_reference: ref,
+        p_contact: contact
+      });
+
+      if (error || !data || !data.found) {
+        if (alertBox) {
+          alertBox.textContent = data?.message || "No reservation found matching this reference and contact detail. Please check and try again.";
+          alertBox.classList.remove('d-none');
+        }
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'SEARCH RESERVATION';
+        }
+        return;
+      }
+
+      currentLookupBooking = data;
+
+      // Populate Result Card
+      document.getElementById('res-ref').textContent = data.booking_reference;
+      document.getElementById('res-status').textContent = (data.status || 'pending').replace('_', ' ');
+      document.getElementById('res-guest-name').textContent = data.guest_name;
+      document.getElementById('res-room').textContent = `Room ${data.room_no || 'TBD'} (${data.room_type || 'Room'})`;
+      document.getElementById('res-checkin').textContent = data.check_in_date;
+      document.getElementById('res-checkout').textContent = data.check_out_date;
+      document.getElementById('res-total').textContent = formatLKR(data.invoice_amount || 0);
+      document.getElementById('res-inv-no').textContent = `INV-${String(data.invoice_id || data.booking_id).padStart(6, '0')}`;
+
+      if (resultCard) resultCard.classList.remove('d-none');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'SEARCH RESERVATION';
+      }
+      if (window.lucide) window.lucide.createIcons();
+
+    } catch (err) {
+      console.error("Lookup error:", err);
+      if (alertBox) {
+        alertBox.textContent = "Could not check reservation right now. Please try again or call our reception directly.";
+        alertBox.classList.remove('d-none');
+      }
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'SEARCH RESERVATION';
+      }
+    }
+  });
+
+  // Printable Official Invoice Pop-up for Guest
+  window.printFoundInvoice = function() {
+    if (!currentLookupBooking) return;
+    const b = currentLookupBooking;
+    const total = b.invoice_amount || 0;
+    const subtotal = Math.round(total / 1.18);
+    const tax = total - subtotal;
+    const dateStr = b.invoice_date ? new Date(b.invoice_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : new Date().toLocaleDateString('en-US');
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+      alert("Please allow pop-ups to print your official receipt.");
+      return;
+    }
+
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Receipt - ${b.booking_reference}</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <style>
+          body { font-family: system-ui, sans-serif; padding: 2rem; color: #1e293b; }
+          .receipt-box { max-width: 680px; margin: 0 auto; border: 1px solid #cbd5e1; border-radius: 12px; padding: 2.5rem; }
+          .stamp { border: 2px dashed #10b981; color: #10b981; font-weight: bold; padding: 4px 10px; border-radius: 6px; display: inline-block; transform: rotate(-5deg); }
+          @media print { body { padding: 0; } .no-print { display: none; } }
+        </style>
+      </head>
+      <body>
+        <div class="receipt-box">
+          <div class="d-flex justify-content-between align-items-start border-bottom pb-4 mb-4">
+            <div>
+              <h2 class="h3 fw-bold mb-1" style="color: #0c1a30;">Hotel The Blue Moon</h2>
+              <div class="small text-muted">2855 Beach Side Rd, Unawatuna, Galle, Sri Lanka</div>
+              <div class="small text-muted">Tel: +94 717 224 755 | Email: shakirvta01@gmail.com</div>
+            </div>
+            <div class="text-end">
+              <span class="stamp mb-2">PAID &amp; CONFIRMED</span>
+              <div class="font-monospace small text-muted">INV-${String(b.invoice_id || b.booking_id).padStart(6, '0')}</div>
+            </div>
+          </div>
+
+          <div class="row g-3 py-2 border-bottom mb-4 small">
+            <div class="col-6">
+              <strong class="d-block">Guest: ${b.guest_name}</strong>
+              <div class="text-muted">${b.guest_email}</div>
+              <div class="text-muted">${b.guest_phone}</div>
+            </div>
+            <div class="col-6 text-end">
+              <div>Booking Ref: <strong class="font-monospace text-primary">${b.booking_reference}</strong></div>
+              <div>Date: ${dateStr}</div>
+              <div>Stay: ${b.period === 'day' ? 'Full Day 24H Flex' : 'Night Stay'}</div>
+            </div>
+          </div>
+
+          <table class="table align-middle mb-4">
+            <thead class="table-light small text-uppercase">
+              <tr>
+                <th>Accommodation</th>
+                <th class="text-center">Dates</th>
+                <th class="text-end">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <strong>${b.room_type ? b.room_type.toUpperCase() : 'SUITE'} ROOM</strong>
+                  <div class="small text-muted">Assigned Room: ${b.room_no || '301'}</div>
+                </td>
+                <td class="text-center small">${b.check_in_date} → ${b.check_out_date}</td>
+                <td class="text-end fw-bold">LKR ${new Intl.NumberFormat('en-US').format(subtotal)}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="small text-muted">
+                <td colspan="2" class="text-end">Resort Service &amp; VAT (18%):</td>
+                <td class="text-end">LKR ${new Intl.NumberFormat('en-US').format(tax)}</td>
+              </tr>
+              <tr class="h5 fw-bold text-dark">
+                <td colspan="2" class="text-end">Total Amount:</td>
+                <td class="text-end text-success">LKR ${new Intl.NumberFormat('en-US').format(total)}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div class="pt-4 border-top text-center small text-muted">
+            <p class="mb-1">Thank you for staying at Hotel The Blue Moon!</p>
+            <p style="font-size: 11px;">Official Electronic Receipt &bull; Reg No: LK-80000-BMN</p>
+            <div class="mt-4 no-print">
+              <button onclick="window.print()" class="btn btn-dark px-4 py-2">Print Receipt</button>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `);
+    printWin.document.close();
+  };
+
   // Run initialization routines
   initDateGuards();
   loadRoomsFromSupabase();

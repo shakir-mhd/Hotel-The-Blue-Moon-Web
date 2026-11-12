@@ -64,7 +64,8 @@
             <a class="nav-link nav-link-custom" data-tab="contact" onclick="switchTab('contact')">CONTACT</a>
           </li>
         </ul>
-        <div class="d-flex justify-content-center mt-3 mt-lg-0">
+        <div class="d-flex justify-content-center mt-3 mt-lg-0 gap-2">
+          <button class="btn btn-outline-light text-uppercase fw-bold px-3 py-2" style="font-size: 11px; letter-spacing: 0.1em; border-color: rgba(255,255,255,0.4);" onclick="openLookupModal()">MY BOOKING</button>
           <button class="btn btn-resort-outline-gold" onclick="switchTab('pricing')">RESERVATION</button>
         </div>
       </div>
@@ -813,10 +814,10 @@
         <div class="col-lg-3 col-6">
           <h5 class="h6 font-serif fw-bold text-dark mb-3">Customer Support</h5>
           <ul class="list-unstyled">
+            <li class="mb-2"><a href="javascript:void(0)" class="text-secondary text-decoration-none cursor-pointer" onclick="openLookupModal()">My Reservation</a></li>
             <li class="mb-2">Guest Support</li>
-            <li class="mb-2">Guest Feedback</li>
-            <li class="mb-2">FAQs</li>
-            <li class="mb-2">Special Offers</li>
+            <li class="mb-2">FAQs &amp; Policies</li>
+            <li class="mb-2"><a href="/admin.html" class="text-secondary text-decoration-none fw-semibold">Staff Operations Hub</a></li>
           </ul>
         </div>
         <div class="col-lg-3">
@@ -829,7 +830,7 @@
 
       <div class="pt-4 mt-4 border-top d-flex flex-column flex-md-row justify-content-between align-items-center small text-muted">
         <span>Copyright &copy; 2026 Hotel The Blue Moon | All Rights Reserved</span>
-        <span>Powered by Mohomed Shakir</span>
+        <span>Powered by Mohomed Shakir &bull; <a href="/admin.html" class="text-decoration-none text-muted">Staff Login</a></span>
       </div>
     </div>
   </footer>
@@ -948,6 +949,90 @@
           <div class="h5 font-monospace text-warning bg-light p-3 rounded border d-inline-block px-4 mb-4" id="booking-ref-display">BMN-000000-2026</div>
           <p class="small text-secondary max-w-md mx-auto mb-4">We have recorded your reservation. Our reception team will reach out via email/phone shortly.</p>
           <button class="btn btn-resort-navy" onclick="closeBookingModal()">DONE</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ==========================================
+       GUEST RESERVATION & INVOICE LOOKUP MODAL
+       ========================================== -->
+  <div id="lookup-modal" class="modal-backdrop-custom">
+    <div class="bg-white rounded-3 shadow-lg overflow-hidden w-100" style="max-width: 680px;">
+      <div class="p-4 bg-dark text-white d-flex justify-content-between align-items-center" style="background-color: var(--resort-blue-950) !important;">
+        <div class="d-flex align-items-center">
+          <i data-lucide="receipt" class="text-warning me-2" style="width: 22px;"></i>
+          <h4 class="h5 font-serif fw-bold mb-0">Find My Reservation &amp; Invoice</h4>
+        </div>
+        <button class="btn-close btn-close-white" onclick="closeLookupModal()"></button>
+      </div>
+
+      <div class="p-4 p-md-5">
+        <!-- Search Form -->
+        <form id="guest-lookup-form" class="row g-3 mb-4">
+          <div class="col-md-6">
+            <label class="form-label small font-sans fw-bold text-uppercase">Booking Reference *</label>
+            <input type="text" id="lookup-ref" class="form-control font-monospace" placeholder="e.g. BMN-000001-2026" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small font-sans fw-bold text-uppercase">Email or Phone Number *</label>
+            <input type="text" id="lookup-contact" class="form-control" placeholder="Email or +94 phone" required>
+          </div>
+          <div class="col-12 d-flex justify-content-end">
+            <button type="submit" id="lookup-submit-btn" class="btn btn-resort-navy w-100 w-md-auto px-4 py-2">
+              SEARCH RESERVATION
+            </button>
+          </div>
+        </form>
+
+        <div id="lookup-alert" class="alert alert-warning small d-none"></div>
+
+        <!-- Result Card -->
+        <div id="lookup-result-card" class="border rounded-3 p-4 bg-light d-none">
+          <div class="d-flex flex-wrap justify-content-between align-items-center border-bottom pb-3 mb-3 gap-2">
+            <div>
+              <span class="text-muted small text-uppercase fw-bold" style="font-size: 10px;">Booking Reference</span>
+              <h5 class="h5 font-monospace fw-bold text-primary mb-0" id="res-ref">BMN-000001-2026</h5>
+            </div>
+            <span class="badge bg-success px-3 py-2 text-uppercase font-sans" id="res-status">Confirmed</span>
+          </div>
+
+          <div class="row g-3 small mb-4">
+            <div class="col-6 col-md-3">
+              <span class="text-muted d-block" style="font-size: 11px;">Guest Name</span>
+              <strong id="res-guest-name">--</strong>
+            </div>
+            <div class="col-6 col-md-3">
+              <span class="text-muted d-block" style="font-size: 11px;">Assigned Room</span>
+              <strong id="res-room">Room 301 (Suite)</strong>
+            </div>
+            <div class="col-6 col-md-3">
+              <span class="text-muted d-block" style="font-size: 11px;">Check-In Date</span>
+              <strong id="res-checkin">--</strong>
+            </div>
+            <div class="col-6 col-md-3">
+              <span class="text-muted d-block" style="font-size: 11px;">Check-Out Date</span>
+              <strong id="res-checkout">--</strong>
+            </div>
+          </div>
+
+          <div class="p-3 bg-white rounded border mb-4 d-flex justify-content-between align-items-center">
+            <div>
+              <span class="text-muted small d-block">Invoice Amount (LKR):</span>
+              <h4 class="h5 font-serif fw-bold text-dark mb-0" id="res-total">LKR 236,000</h4>
+            </div>
+            <div class="text-end">
+              <span class="badge bg-light text-muted border font-monospace" id="res-inv-no">INV-000001</span>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center">
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="closeLookupModal()">Close</button>
+            <button type="button" class="btn btn-resort-gold btn-sm d-flex align-items-center gap-1" onclick="printFoundInvoice()">
+              <i data-lucide="printer" style="width: 14px;"></i> Print Official Receipt
+            </button>
+          </div>
         </div>
       </div>
     </div>
