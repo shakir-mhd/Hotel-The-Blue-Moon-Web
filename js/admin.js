@@ -10,8 +10,12 @@ import { supabaseClient } from './supabaseClient.js';
 const adminState = {
   staffUser: null,
   selectedPosition: null,
+  selectedLoginOption: 'admins',
   activeTab: 'room-rack',
+  roomFilter: 'all',
   calculatedWalkinTotal: 0,
+  currentEmailData: null,
+  lastFoundGuestBooking: null,
   dashboardData: {
     stats: {},
     rooms: [],
@@ -65,10 +69,42 @@ function initLiveClock() {
 }
 
 // =============================================================================
-// 1. POSITION SELECTION & AUTHENTICATION (User Guide Page 4)
+// 1. ACCESS GATEWAY & LOGIN OPTIONS (User Guide Page 4 Screen 1 & Screen 2)
 // =============================================================================
 
-// Step 1: User selects staff role / position
+// Screen 1: Choose Login Option (Customer vs Admins)
+window.selectLoginOption = function(option) {
+  adminState.selectedLoginOption = option;
+  document.getElementById('login-option-step')?.classList.add('d-none');
+
+  if (option === 'customer') {
+    document.getElementById('customer-portal-step')?.classList.remove('d-none');
+    document.getElementById('position-selection-step')?.classList.add('d-none');
+    document.getElementById('position-login-step')?.classList.add('d-none');
+  } else {
+    document.getElementById('position-selection-step')?.classList.remove('d-none');
+    document.getElementById('customer-portal-step')?.classList.add('d-none');
+    document.getElementById('position-login-step')?.classList.add('d-none');
+  }
+
+  if (window.lucide) window.lucide.createIcons();
+};
+
+// Return to Login Option Chooser
+window.resetLoginOption = function() {
+  adminState.selectedLoginOption = 'admins';
+  adminState.selectedPosition = null;
+
+  document.getElementById('login-option-step')?.classList.remove('d-none');
+  document.getElementById('customer-portal-step')?.classList.add('d-none');
+  document.getElementById('position-selection-step')?.classList.add('d-none');
+  document.getElementById('position-login-step')?.classList.add('d-none');
+  document.getElementById('login-error-alert')?.classList.add('d-none');
+
+  if (window.lucide) window.lucide.createIcons();
+};
+
+// Screen 2: User selects staff role / position
 window.selectStaffPosition = function(position, defaultUser, defaultPass) {
   adminState.selectedPosition = position;
 
@@ -183,7 +219,89 @@ window.handleStaffLogout = function() {
 
   document.getElementById('admin-dashboard-view')?.classList.add('d-none');
   document.getElementById('admin-auth-view')?.classList.remove('d-none');
-  resetPositionSelection();
+  resetLoginOption();
+};
+
+// Customer Self-Service Lookup inside Admin Hub
+async function handleAdminGuestLookup(e) {
+  e.preventDefault();
+  const ref = document.getElementById('admin-lookup-ref')?.value?.trim();
+  const contact = document.getElementById('admin-lookup-contact')?.value?.trim();
+  const alertBox = document.getElementById('admin-lookup-alert');
+  const resultCard = document.getElementById('admin-lookup-result');
+  const submitBtn = document.getElementById('admin-lookup-btn');
+
+  if (!ref || !contact) return;
+  if (alertBox) alertBox.classList.add('d-none');
+  if (resultCard) resultCard.classList.add('d-none');
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'SEARCHING...';
+  }
+
+  try {
+    if (!supabaseClient) throw new Error("Supabase is not initialized.");
+
+    const { data, error } = await supabaseClient.rpc('get_booking_by_reference', {
+      p_reference: ref,
+      p_contact: contact
+    });
+
+    if (error || !data || !data.found) {
+      if (alertBox) {
+        alertBox.textContent = data?.message || "No reservation found matching this reference and contact detail.";
+        alertBox.classList.remove('d-none');
+      }
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'FIND RESERVATION & INVOICE';
+      }
+      return;
+    }
+
+    adminState.lastFoundGuestBooking = data;
+    document.getElementById('admin-res-ref').textContent = data.booking_reference;
+    document.getElementById('admin-res-status').textContent = (data.status || 'pending').replace('_', ' ');
+    document.getElementById('admin-res-name').textContent = data.guest_name;
+    document.getElementById('admin-res-room').textContent = `Room ${data.room_no || 'TBD'} (${data.room_type || 'Deluxe'})`;
+    document.getElementById('admin-res-dates').textContent = `${data.check_in_date} → ${data.check_out_date}`;
+    document.getElementById('admin-res-amount').textContent = formatLKR(data.invoice_amount || 0);
+
+    if (resultCard) resultCard.classList.remove('d-none');
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'FIND RESERVATION & INVOICE';
+    }
+    if (window.lucide) window.lucide.createIcons();
+
+  } catch (err) {
+    console.error("Lookup error:", err);
+    if (alertBox) {
+      alertBox.textContent = "Could not check reservation right now.";
+      alertBox.classList.remove('d-none');
+    }
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'FIND RESERVATION & INVOICE';
+    }
+  }
+}
+
+window.printAdminFoundInvoice = function() {
+  if (!adminState.lastFoundGuestBooking) return;
+  const b = adminState.lastFoundGuestBooking;
+  const invoice = {
+    invoice_id: b.invoice_id || b.booking_id,
+    booking_reference: b.booking_reference,
+    guest_name: b.guest_name,
+    guest_email: b.guest_email,
+    guest_phone: b.guest_phone,
+    room_no: b.room_no,
+    stay_dates: `${b.check_in_date} → ${b.check_out_date}`,
+    amount: b.invoice_amount || 0
+  };
+  openInvoiceModal(invoice);
 };
 
 // =============================================================================
@@ -379,15 +497,64 @@ function renderMetrics(stats) {
 }
 
 // =============================================================================
-// 4. ROOM RACK & LIVE CHECKOUT (User Guide Page 5)
+// 4. ROOM RACK & LIVE CHECKOUT (User Guide Page 5 + Interactive Filter)
 // =============================================================================
+
+// Live Filter Selector for Room Rack
+window.filterRoomRack = function(filter) {
+  adminState.roomFilter = filter;
+
+  // Toggle active button style
+  document.querySelectorAll('#room-rack-filters button').forEach(btn => {
+    if (btn.dataset.filter === filter) {
+      btn.classList.add('active', 'btn-dark', 'text-warning');
+      btn.classList.remove('btn-outline-dark', 'btn-outline-success', 'btn-outline-danger', 'btn-outline-warning');
+    } else {
+      btn.classList.remove('active', 'btn-dark', 'text-warning');
+      if (btn.dataset.filter === 'available') btn.classList.add('btn-outline-success');
+      else if (btn.dataset.filter === 'occupied') btn.classList.add('btn-outline-danger');
+      else if (btn.dataset.filter === 'housekeeping') btn.classList.add('btn-outline-warning');
+      else btn.classList.add('btn-outline-dark');
+    }
+  });
+
+  renderRoomRack(adminState.dashboardData.rooms);
+};
 
 function renderRoomRack(rooms) {
   const container = document.getElementById('room-rack-grid');
   if (!container) return;
 
-  if (!rooms || rooms.length === 0) {
-    container.innerHTML = `<div class="col-12 text-center text-muted py-4">No rooms registered.</div>`;
+  const allRooms = rooms || [];
+
+  // Update filter counters
+  const totalCount = allRooms.length;
+  const availCount = allRooms.filter(r => r.status === 'available').length;
+  const occCount = allRooms.filter(r => r.status === 'occupied').length;
+  const maintCount = allRooms.filter(r => r.status === 'maintenance' || r.status === 'cleaning').length;
+
+  const countAll = document.getElementById('rack-count-all');
+  const countAvail = document.getElementById('rack-count-available');
+  const countOcc = document.getElementById('rack-count-occupied');
+  const countMaint = document.getElementById('rack-count-maintenance');
+
+  if (countAll) countAll.textContent = totalCount;
+  if (countAvail) countAvail.textContent = availCount;
+  if (countOcc) countOcc.textContent = occCount;
+  if (countMaint) countMaint.textContent = maintCount;
+
+  // Apply active filter
+  let filteredRooms = allRooms;
+  if (adminState.roomFilter === 'available') {
+    filteredRooms = allRooms.filter(r => r.status === 'available');
+  } else if (adminState.roomFilter === 'occupied') {
+    filteredRooms = allRooms.filter(r => r.status === 'occupied');
+  } else if (adminState.roomFilter === 'housekeeping') {
+    filteredRooms = allRooms.filter(r => r.status === 'maintenance' || r.status === 'cleaning');
+  }
+
+  if (filteredRooms.length === 0) {
+    container.innerHTML = `<div class="col-12 text-center text-muted py-5 bg-white rounded-3 border">No rooms found in category "${adminState.roomFilter}".</div>`;
     return;
   }
 
@@ -398,7 +565,7 @@ function renderRoomRack(rooms) {
     family: "Royal Family Residence"
   };
 
-  container.innerHTML = rooms.map(room => {
+  container.innerHTML = filteredRooms.map(room => {
     const status = room.status || 'available';
     const isOccupied = status === 'occupied';
     const isMaintenance = status === 'maintenance';
@@ -602,7 +769,7 @@ function renderHousekeepingQueue(rooms) {
 }
 
 // =============================================================================
-// 6. RESERVATION LEDGER & STAY LIFECYCLE (User Guide Page 5)
+// 6. RESERVATION LEDGER & EMAIL CONFIRMATION DISPATCH (User Guide Page 5)
 // =============================================================================
 
 function renderBookings(bookings) {
@@ -669,8 +836,8 @@ function renderBookings(bookings) {
               </button>
             ` : ''}
 
-            <button class="btn btn-outline-success" onclick="sendWhatsAppConfirmation(${b.booking_id})" title="Send 1-Click WhatsApp Confirmation to Guest">
-              <i data-lucide="message-circle" style="width: 14px;"></i>
+            <button class="btn btn-outline-primary" onclick="sendEmailConfirmation(${b.booking_id})" title="Send Official Confirmation Email (100% Free)">
+              <i data-lucide="mail" style="width: 14px;"></i>
             </button>
 
             <button class="btn btn-outline-secondary" onclick="viewInvoiceFromBooking(${b.booking_id})" title="Print Invoice">
@@ -683,49 +850,6 @@ function renderBookings(bookings) {
   }).join('');
 }
 
-// 1-Click WhatsApp Reservation Messenger (100% Zero-Cost Academic Integration)
-window.sendWhatsAppConfirmation = function(bookingId) {
-  const booking = adminState.dashboardData.bookings.find(b => b.booking_id === bookingId);
-  if (!booking) return;
-
-  // Normalize phone number (Default to Sri Lanka +94)
-  let rawPhone = (booking.guest_phone || '').replace(/[^0-9]/g, '');
-  if (rawPhone.startsWith('0')) {
-    rawPhone = '94' + rawPhone.substring(1);
-  } else if (!rawPhone.startsWith('94') && rawPhone.length === 9) {
-    rawPhone = '94' + rawPhone;
-  }
-  if (!rawPhone) rawPhone = '94717224755';
-
-  const roomNames = {
-    single: "Single Deluxe Room",
-    double: "Double Ocean Room",
-    suite: "Grand Luxury Suite",
-    family: "Royal Family Residence"
-  };
-  const roomTitle = roomNames[booking.room_type] || `Room ${booking.room_no || 'TBD'}`;
-
-  const messageText = 
-    `*HOTEL THE BLUE MOON — RESERVATION CONFIRMATION*\n\n` +
-    `Dear *${booking.guest_name}*,\n` +
-    `Greetings from Hotel The Blue Moon, Unawatuna, Galle, Sri Lanka!\n\n` +
-    `Your stay reservation has been officially confirmed:\n` +
-    `• *Booking Reference:* ${booking.booking_reference}\n` +
-    `• *Assigned Room:* Room ${booking.room_no || 'TBD'} (${roomTitle})\n` +
-    `• *Check-In Date:* ${booking.check_in_date}\n` +
-    `• *Check-Out Date:* ${booking.check_out_date}\n` +
-    `• *Stay Package:* ${booking.period === 'day' ? '24H Flex Stay' : 'One Night Stay'}\n` +
-    `• *Total Billed:* ${formatLKR(booking.invoice_amount)} (Inc 18% VAT)\n\n` +
-    `Check-in commences from 2:00 PM standard resort hours. We look forward to providing you an unforgettable 7-star coastal experience.\n\n` +
-    `*Front Desk Concierge*\n` +
-    `Hotel The Blue Moon Resort & Spa\n` +
-    `2855 Beach Side Rd, Unawatuna, Galle, Sri Lanka\n` +
-    `Tel: +94 717 224 755 | Web: https://blue-moon-web-virid.vercel.app`;
-
-  const waUrl = `https://wa.me/${rawPhone}?text=${encodeURIComponent(messageText)}`;
-  window.open(waUrl, '_blank');
-};
-
 // Filter Bookings by Search Term
 window.filterBookingsTable = function() {
   const query = document.getElementById('booking-search-input')?.value?.toLowerCase().trim();
@@ -737,6 +861,94 @@ window.filterBookingsTable = function() {
     } else {
       row.style.display = 'none';
     }
+  });
+};
+
+// 100% Free Official Guest Email Confirmation Dispatcher
+window.sendEmailConfirmation = function(bookingId) {
+  const booking = adminState.dashboardData.bookings.find(b => b.booking_id === bookingId);
+  if (!booking) return;
+
+  const roomNames = {
+    single: "Single Deluxe Room",
+    double: "Double Ocean Room",
+    suite: "Grand Luxury Suite",
+    family: "Royal Family Residence"
+  };
+  const roomTitle = roomNames[booking.room_type] || `Room ${booking.room_no || 'TBD'}`;
+
+  const subject = `Official Reservation Confirmation - Hotel The Blue Moon (${booking.booking_reference})`;
+
+  const emailBody = 
+`Dear ${booking.guest_name},
+
+Thank you for choosing Hotel The Blue Moon, Unawatuna, Sri Lanka. We are pleased to confirm your upcoming luxury resort reservation.
+
+RESERVATION DETAILS:
+• Booking Reference: ${booking.booking_reference}
+• Assigned Room: Room ${booking.room_no || 'TBD'} (${roomTitle})
+• Check-In Date: ${booking.check_in_date}
+• Check-Out Date: ${booking.check_out_date}
+• Stay Package: ${booking.period === 'day' ? 'Full Day 24H Flex Stay' : 'One Night Stay'}
+• Total Invoiced Amount: ${formatLKR(booking.invoice_amount)} (Inclusive of 18% VAT & Service Charge)
+
+RESORT POLICIES & CHECK-IN:
+• Check-in commences from 2:00 PM standard resort hours.
+• Please present a valid National Identity Card (NIC) or Passport upon arrival at front desk.
+• Complimentary high-speed Wi-Fi, swimming pool access, and seaside amenities are included throughout your stay.
+
+Should you require airport transfers or custom dining reservations, please reply directly to this email.
+
+Warm regards,
+Front Desk & Reservations Concierge
+Hotel The Blue Moon Resort & Spa
+2855 Beach Side Rd, Unawatuna, Galle, Southern Province, Sri Lanka
+Tel: +94 717 224 755 | Web: https://blue-moon-web-virid.vercel.app`;
+
+  adminState.currentEmailData = {
+    to: booking.guest_email || 'guest@example.com',
+    subject: subject,
+    body: emailBody
+  };
+
+  // Populate preview modal
+  const toField = document.getElementById('email-modal-to');
+  const subjField = document.getElementById('email-modal-subject');
+  const previewBox = document.getElementById('email-modal-preview');
+
+  if (toField) toField.value = adminState.currentEmailData.to;
+  if (subjField) subjField.value = adminState.currentEmailData.subject;
+  if (previewBox) previewBox.textContent = adminState.currentEmailData.body;
+
+  const modalElem = document.getElementById('emailModal');
+  if (modalElem && window.bootstrap) {
+    const bsModal = new window.bootstrap.Modal(modalElem);
+    bsModal.show();
+  }
+};
+
+window.dispatchGuestEmail = function() {
+  if (!adminState.currentEmailData) return;
+  const { to, subject, body } = adminState.currentEmailData;
+
+  const mailtoUrl = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(mailtoUrl, '_blank');
+
+  const modalElem = document.getElementById('emailModal');
+  if (modalElem && window.bootstrap) {
+    const bsModal = window.bootstrap.Modal.getInstance(modalElem);
+    if (bsModal) bsModal.hide();
+  }
+
+  showToast(`Confirmation email dispatched to ${to}!`);
+};
+
+window.copyEmailContent = function() {
+  if (!adminState.currentEmailData) return;
+  navigator.clipboard.writeText(adminState.currentEmailData.body).then(() => {
+    showToast("Email template copied to clipboard!");
+  }).catch(() => {
+    alert("Could not copy to clipboard.");
   });
 };
 
@@ -931,7 +1143,7 @@ async function handleWalkinSubmit(e) {
 }
 
 // =============================================================================
-// 8. EXECUTIVE REPORTING & AUDIT (User Guide Page 7: General Manager)
+// 8. EXECUTIVE REPORTING & CSV EXPORT (User Guide Page 7: General Manager)
 // =============================================================================
 
 // Generate Monthly Report (Calls Supabase RPC: generate_monthly_report)
@@ -984,6 +1196,41 @@ window.triggerMonthlyReport = async function(year, month) {
     console.error("Monthly report error:", err);
     alert("Error generating monthly report.");
   }
+};
+
+// 1-Click "Export Ledger to Excel / CSV" (100% Free Client-Side)
+window.exportLedgerCSV = function() {
+  const bookings = adminState.dashboardData.bookings || [];
+  if (bookings.length === 0) {
+    alert("No reservation records available to export.");
+    return;
+  }
+
+  const headers = ["Booking Reference", "Guest Name", "Email", "Phone", "Room No", "Check In", "Check Out", "Period", "Amount (LKR)", "Status", "Date Created"];
+  const rows = bookings.map(b => [
+    `"${b.booking_reference}"`,
+    `"${(b.guest_name || '').replace(/"/g, '""')}"`,
+    `"${b.guest_email || ''}"`,
+    `"${b.guest_phone || ''}"`,
+    `"${b.room_no || ''}"`,
+    `"${b.check_in_date || ''}"`,
+    `"${b.check_out_date || ''}"`,
+    `"${b.period || ''}"`,
+    b.invoice_amount || 0,
+    `"${b.booking_status || ''}"`,
+    `"${b.created_at || ''}"`
+  ]);
+
+  const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `hotel-the-blue-moon-reservations-${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  showToast("Accounting ledger exported to CSV file successfully!");
 };
 
 // Manager Sub-view Switcher (Smooth focus on Customers or Salaries)
@@ -1179,6 +1426,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Attach walk-in form handler
   const walkinForm = document.getElementById('walkin-form');
   walkinForm?.addEventListener('submit', handleWalkinSubmit);
+
+  // Attach customer search form in staff hub
+  const adminLookupForm = document.getElementById('admin-guest-lookup-form');
+  adminLookupForm?.addEventListener('submit', handleAdminGuestLookup);
 
   // Check existing session in sessionStorage
   const savedSession = sessionStorage.getItem('blue_moon_staff');

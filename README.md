@@ -22,7 +22,7 @@
 
 | Portal / Position | Username | Password | Operational Capabilities |
 | :--- | :--- | :--- | :--- |
-| **Receptionist** | `reception` | `BlueMoonStaff2026!` | Visual Room Rack, Walk-in Registration, Check-in/Check-out, 1-Click WhatsApp Confirmation |
+| **Receptionist** | `reception` | `BlueMoonStaff2026!` | Visual Room Rack, Walk-in Registration, Check-in/Check-out, 1-Click Free Email Confirmation |
 | **Room Keeper** | `keeper` | `RoomKeeper2026!` | Housekeeping Turnover Queue, "Start Cleaning" → "Mark Available", Last Login audit |
 | **General Manager** | `admin` | `AdminBlueMoon2026!` | Executive Suite, "Generate Monthly Report" (Earnings, Bookings, Guests), Staff Payroll, Security Audit |
 
@@ -185,7 +185,7 @@ sequenceDiagram
 
     Note over Reception,DB: Step 2: Front Desk Check-in & Walk-ins
     Reception->>DB: Confirms Reservation or Creates Walk-in Booking
-    Reception->>Guest: Sends 1-Click WhatsApp Confirmation
+    Reception->>Guest: Dispatches 1-Click Free Email Confirmation
     Reception->>DB: Executes Check-in (Room status -> 'occupied')
 
     Note over Reception,Housekeeping: Step 3: Checkout & Housekeeping Handover
@@ -215,8 +215,8 @@ Every component in this project was architected to run permanently on legitimate
 | **Database & Auth** | Supabase | 500 MB PostgreSQL 17, 50,000 monthly active users, daily automated backups | **$0.00** |
 | **Hosting & CDN** | Vercel | Unlimited deployments, global Edge CDN, automated HTTPS SSL certificates | **$0.00** |
 | **Source Control** | GitHub | Unlimited public repositories, automated Git version control | **$0.00** |
-| **Messaging** | WhatsApp API | Direct `wa.me` protocol integration replacing costly third-party SMS APIs | **$0.00** |
-| **Document Export** | Browser Engine | Client-side vector printing and PDF generation | **$0.00** |
+| **Messaging & Notices** | Native Email Protocol | Zero-cost client-side dispatch and mailto protocol replacing expensive SMS/Email gateways | **$0.00** |
+| **Data Export** | Browser Engine | Client-side Excel CSV export and printable PDF receipts | **$0.00** |
 | **Build Tools** | Vite 8 + ES6 | Open-source MIT compiler yielding sub-150ms builds | **$0.00** |
 
 ---
@@ -240,8 +240,8 @@ Below are the top 10 technical questions commonly asked by academic examiners, a
 ### Q5: Why is the `SALARY` table separated from the `EMPLOYEE` table?
 > **Answer:** *"This adheres to 3rd Normal Form and the Principle of Least Privilege. In enterprise HR systems, general staff records (email, phone, designation) are operational and shared, whereas payroll information is sensitive. Separating them into a 1-to-1 table allows future RLS policies to restrict salary rows strictly to the General Manager."*
 
-### Q6: How do you handle guest communication without paying for costly SMS gateways?
-> **Answer:** *"Third-party SMS gateways charge per message. To keep the project 100% free while preserving luxury hospitality standards, we integrated the official WhatsApp Click-to-Chat protocol (`wa.me`). With one click from the reservations ledger, the receptionist opens WhatsApp with a pre-formatted, polite confirmation message containing the guest's name, booking reference, room number, and billing total."*
+### Q6: How do you handle guest communication without paying for costly SMS or email gateways?
+> **Answer:** *"Third-party SMS gateways and automated email services charge monthly subscription fees or per-message credits. To keep our project 100% free while preserving luxury hospitality standards, we built a zero-cost Email Confirmation Dispatcher. When the receptionist confirms a reservation, clicking the Email icon opens a luxury formatted email with recipient, booking reference, room category, stay dates, policies, and amount in LKR. The receptionist can copy the text or launch the email client directly with zero third-party subscription costs."*
 
 ### Q7: How does the General Manager generate the Monthly Report?
 > **Answer:** *"The Manager clicks 'Generate Monthly Report', which invokes the `generate_monthly_report(year, month)` RPC. The database aggregates `SUM(invoice.amount)` for total earnings, counts bookings, counts distinct customer IDs, computes the 18% VAT breakdown, and identifies the most popular room category in a single high-performance query."*

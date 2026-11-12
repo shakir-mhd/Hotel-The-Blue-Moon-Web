@@ -46,11 +46,96 @@
         </div>
 
         <div class="p-4 p-md-5">
-          <!-- Step 1: Position / Designation Selector (User Guide Page 4) -->
-          <div id="position-selection-step">
+          <!-- Step 0: Choose Login Option (User Guide Page 4 Screen 1: Customer vs Admins) -->
+          <div id="login-option-step">
             <div class="text-center mb-4">
-              <h4 class="h5 font-serif fw-bold text-dark mb-1">Please Select Your Position</h4>
-              <p class="small text-muted mb-0">Authorized staff access only. Choose your operational department:</p>
+              <span class="subtitle-gold" style="font-size: 11px;">ACCESS PORTAL</span>
+              <h4 class="h5 font-serif fw-bold text-dark mb-1">Choose Login Option</h4>
+              <p class="small text-muted mb-0">Select your account category to proceed:</p>
+            </div>
+
+            <div class="row g-3 mb-4">
+              <!-- Option 1: Customer -->
+              <div class="col-sm-6">
+                <div class="position-card" onclick="selectLoginOption('customer')">
+                  <div class="position-icon">
+                    <i data-lucide="user" style="width: 24px; height: 24px;"></i>
+                  </div>
+                  <h6 class="fw-bold mb-1">Customer</h6>
+                  <span class="small text-muted d-block" style="font-size: 11px;">Guest Self-Service &amp; Invoices</span>
+                </div>
+              </div>
+
+              <!-- Option 2: Admins -->
+              <div class="col-sm-6">
+                <div class="position-card" onclick="selectLoginOption('admins')">
+                  <div class="position-icon">
+                    <i data-lucide="shield-check" style="width: 24px; height: 24px;"></i>
+                  </div>
+                  <h6 class="fw-bold mb-1">Admins</h6>
+                  <span class="small text-muted d-block" style="font-size: 11px;">Staff &amp; Operations Portals</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 0-B: Customer Self-Service View -->
+          <div id="customer-portal-step" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded-3 border">
+              <div>
+                <span class="text-muted small text-uppercase fw-bold" style="font-size: 10px;">Portal:</span>
+                <strong class="d-block text-dark font-serif">Customer Self-Service</strong>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetLoginOption()">
+                ← Back
+              </button>
+            </div>
+
+            <p class="small text-muted mb-3">Retrieve your confirmed reservation status, room assignment, and official billing receipt.</p>
+
+            <form id="admin-guest-lookup-form" class="mb-3">
+              <div class="mb-3">
+                <label class="form-label small fw-bold text-uppercase text-secondary">Booking Reference *</label>
+                <input type="text" id="admin-lookup-ref" class="form-control font-monospace" placeholder="e.g. BMN-000001-2026" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label small fw-bold text-uppercase text-secondary">Registered Email or Phone *</label>
+                <input type="text" id="admin-lookup-contact" class="form-control" placeholder="guest@example.com or +94..." required>
+              </div>
+              <button type="submit" id="admin-lookup-btn" class="btn btn-dark w-100 py-3 fw-bold text-uppercase" style="background-color: var(--resort-blue-950);">
+                FIND RESERVATION &amp; INVOICE
+              </button>
+            </form>
+
+            <div id="admin-lookup-alert" class="alert alert-warning small py-2 d-none"></div>
+
+            <div id="admin-lookup-result" class="p-3 bg-light rounded-3 border d-none small">
+              <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+                <strong class="font-monospace text-primary" id="admin-res-ref">BMN-000001-2026</strong>
+                <span class="badge bg-success text-uppercase" id="admin-res-status">Confirmed</span>
+              </div>
+              <div>Guest: <strong id="admin-res-name">--</strong></div>
+              <div>Room: <strong id="admin-res-room">--</strong></div>
+              <div>Stay: <span id="admin-res-dates">--</span></div>
+              <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
+                <strong class="text-dark font-serif" id="admin-res-amount">LKR 0</strong>
+                <button type="button" class="btn btn-sm btn-warning text-dark fw-bold" onclick="printAdminFoundInvoice()">
+                  <i data-lucide="printer" style="width: 14px;"></i> Print Receipt
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 1: Position / Designation Selector (User Guide Page 4 Screen 2) -->
+          <div id="position-selection-step" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <div>
+                <h4 class="h5 font-serif fw-bold text-dark mb-0">Admins: Select Your Position</h4>
+                <span class="small text-muted">Operational departmental access:</span>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetLoginOption()">
+                ← Back
+              </button>
             </div>
 
             <div class="row g-3 mb-4">
@@ -281,6 +366,22 @@
           </div>
         </div>
 
+        <!-- Room Rack Live Filter Pills (100% Zero-Cost Interactive Filter) -->
+        <div class="d-flex flex-wrap gap-2 mb-4" id="room-rack-filters">
+          <button type="button" class="btn btn-sm btn-dark text-warning active px-3" data-filter="all" onclick="filterRoomRack('all')">
+            All Rooms (<span id="rack-count-all">6</span>)
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-success px-3" data-filter="available" onclick="filterRoomRack('available')">
+            Available (<span id="rack-count-available">0</span>)
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-danger px-3" data-filter="occupied" onclick="filterRoomRack('occupied')">
+            Occupied (<span id="rack-count-occupied">0</span>)
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-warning px-3" data-filter="housekeeping" onclick="filterRoomRack('housekeeping')">
+            Housekeeping (<span id="rack-count-maintenance">0</span>)
+          </button>
+        </div>
+
         <div class="row g-4" id="room-rack-grid">
           <!-- Rendered dynamically -->
         </div>
@@ -360,6 +461,9 @@
           <div class="d-flex flex-wrap gap-2">
             <button class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-2 px-3 py-2" onclick="triggerMonthlyReport()">
               <i data-lucide="bar-chart-3" style="width: 16px;"></i> Generate Monthly Report
+            </button>
+            <button class="btn btn-outline-success d-flex align-items-center gap-1" onclick="exportLedgerCSV()" title="Export Reservations & Accounting Ledger to CSV">
+              <i data-lucide="file-spreadsheet" style="width: 14px;"></i> Export to CSV
             </button>
             <button class="btn btn-outline-dark d-flex align-items-center gap-1" onclick="switchManagerSubView('customers')">
               <i data-lucide="users" style="width: 14px;"></i> View Customers
@@ -744,6 +848,51 @@
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
           <button type="button" class="btn btn-primary" onclick="window.print()">
             <i data-lucide="printer" style="width: 16px;"></i> Print / Save PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- =========================================================================
+       6. MODAL: OFFICIAL GUEST EMAIL CONFIRMATION DISPATCH (100% Free)
+       ========================================================================= -->
+  <div class="modal fade" id="emailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-dark text-white" style="background-color: var(--resort-blue-950) !important;">
+          <div class="d-flex align-items-center">
+            <i data-lucide="mail" class="text-warning me-2" style="width: 20px; height: 20px;"></i>
+            <h5 class="modal-title font-serif">Guest Email Confirmation Dispatch</h5>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-uppercase text-secondary">Recipient (Guest Email)</label>
+            <input type="email" id="email-modal-to" class="form-control" readonly>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-uppercase text-secondary">Subject</label>
+            <input type="text" id="email-modal-subject" class="form-control" readonly>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-uppercase text-secondary">Formatted Email Content</label>
+            <div id="email-modal-preview" class="p-3 bg-light rounded border font-monospace small" style="white-space: pre-wrap; max-height: 260px; overflow-y: auto;"></div>
+          </div>
+          <div class="p-3 bg-success-subtle text-success-emphasis rounded border border-success-subtle small d-flex align-items-center gap-2">
+            <i data-lucide="shield-check" style="width: 18px;"></i>
+            <span>100% Zero-Cost Service: Dispatches via browser direct mail client or protocol without third-party email credits.</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-outline-dark" onclick="copyEmailContent()">
+            <i data-lucide="copy" style="width: 14px;"></i> Copy Text
+          </button>
+          <button type="button" class="btn btn-primary d-flex align-items-center gap-2 px-4" onclick="dispatchGuestEmail()">
+            <i data-lucide="send" style="width: 16px;"></i> Send via Email Client
           </button>
         </div>
       </div>
