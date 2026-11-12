@@ -12,6 +12,7 @@ const adminState = {
   selectedPosition: null,
   activeTab: 'room-rack',
   roomFilter: 'all',
+  revenueMasked: false,
   calculatedWalkinTotal: 0,
   currentEmailData: null,
   dashboardData: {
@@ -269,12 +270,7 @@ function buildRoleNavigation(isManager, isReception, isRoomKeeper) {
       </li>
       <li class="nav-item">
         <a class="nav-link" data-tab="bookings" onclick="switchAdminTab('bookings')">
-          <i data-lucide="calendar-check" style="width: 15px;"></i> Reservations
-        </a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" data-tab="invoices" onclick="switchAdminTab('invoices')">
-          <i data-lucide="receipt" style="width: 15px;"></i> Invoices &amp; Bills
+          <i data-lucide="calendar-check" style="width: 15px;"></i> Reservations Ledger
         </a>
       </li>
     `;
@@ -309,8 +305,18 @@ function buildRoleNavigation(isManager, isReception, isRoomKeeper) {
   switchAdminTab(defaultTab);
 }
 
-// Tab Switching Handler
+// Tab Switching Handler with RBAC Guard
 window.switchAdminTab = function(tabId) {
+  const user = adminState.staffUser || {};
+  const designation = (user.designation || '').toLowerCase();
+  const isManager = designation.includes('manager') || designation.includes('admin');
+
+  // RBAC Tab Protection: Invoices and Executive Suite strictly require Manager privilege
+  if ((tabId === 'manager' || tabId === 'invoices') && !isManager) {
+    showToast("Access Restricted: Financial Ledger and Executive Suite require General Manager authorization.");
+    return;
+  }
+
   adminState.activeTab = tabId;
 
   // Toggle active class on nav links
@@ -366,19 +372,90 @@ window.loadDashboardData = async function() {
   }
 };
 
-// Render KPI Metrics
+// Render KPI Metrics with Role-Based Access Control (PoLP: Principle of Least Privilege)
 function renderMetrics(stats) {
   if (!stats) return;
   const availElem = document.getElementById('stat-available');
   const occElem = document.getElementById('stat-occupied');
   const maintElem = document.getElementById('stat-maintenance');
-  const revElem = document.getElementById('stat-revenue');
 
   if (availElem) availElem.textContent = stats.available_rooms ?? 0;
   if (occElem) occElem.textContent = stats.occupied_rooms ?? 0;
   if (maintElem) maintElem.textContent = stats.maintenance_rooms ?? 0;
-  if (revElem) revElem.textContent = formatLKR(stats.total_revenue ?? 0);
+
+  // Role-Specific 4th Metric: Ensure strict confidentiality of total hotel revenue
+  const user = adminState.staffUser || {};
+  const designation = (user.designation || '').toLowerCase();
+  const isManager = designation.includes('manager') || designation.includes('admin');
+  const isRoomKeeper = designation.includes('room') || designation.includes('keeper') || designation.includes('housekeeping');
+
+  const titleElem = document.getElementById('stat-kpi-4-title');
+  const valueElem = document.getElementById('stat-kpi-4-value');
+  const iconContainer = document.getElementById('stat-kpi-4-icon-container');
+
+  if (isRoomKeeper) {
+    // Housekeeping: Display sanitation progress & turnover readiness
+    const totalRooms = stats.total_rooms ?? 6;
+    const maintenanceRooms = stats.maintenance_rooms ?? 0;
+    const cleanRooms = Math.max(0, totalRooms - maintenanceRooms);
+    const readyRate = Math.round((cleanRooms / (totalRooms || 1)) * 100);
+
+    if (titleElem) titleElem.textContent = 'Turnover Readiness';
+    if (valueElem) {
+      valueElem.innerHTML = `<span class="text-success">${cleanRooms}/${totalRooms}</span> <span class="text-muted fw-normal fs-6">(${readyRate}% Ready)</span>`;
+    }
+    if (iconContainer) {
+      iconContainer.className = 'p-3 bg-success-subtle rounded-3 text-success';
+      iconContainer.innerHTML = '<i data-lucide="sparkles" style="width: 24px; height: 24px;"></i>';
+    }
+  } else if (!isManager) {
+    // Receptionist (Front Desk): Display confirmed bookings & guest traffic
+    const totalBookings = stats.total_bookings ?? 0;
+
+    if (titleElem) titleElem.textContent = 'Active Reservations';
+    if (valueElem) {
+      valueElem.innerHTML = `<span class="text-primary">${totalBookings}</span> <span class="text-muted fw-normal fs-6">Stays</span>`;
+    }
+    if (iconContainer) {
+      iconContainer.className = 'p-3 bg-info-subtle rounded-3 text-info';
+      iconContainer.innerHTML = '<i data-lucide="calendar-check" style="width: 24px; height: 24px;"></i>';
+    }
+  } else {
+    // General Manager (Executive Only): Confidential Invoiced Revenue with Privacy Toggle
+    const rawRevenue = stats.total_revenue ?? 0;
+    const formatted = formatLKR(rawRevenue);
+    const isMasked = !!adminState.revenueMasked;
+
+    if (titleElem) {
+      titleElem.innerHTML = `
+        Invoiced Revenue
+        <span class="badge bg-danger-subtle text-danger ms-1" style="font-size: 9px; vertical-align: middle;">Confidential</span>
+      `;
+    }
+    if (valueElem) {
+      valueElem.innerHTML = `
+        <span class="text-dark">${isMasked ? 'LKR ••••••••' : formatted}</span>
+        <button type="button" class="btn btn-sm btn-link p-0 text-muted ms-2 align-baseline" onclick="window.toggleRevenuePrivacy()" title="${isMasked ? 'Reveal Revenue' : 'Hide Revenue'}">
+          <i data-lucide="${isMasked ? 'eye-off' : 'eye'}" style="width: 15px; height: 15px;"></i>
+        </button>
+      `;
+    }
+    if (iconContainer) {
+      iconContainer.className = 'p-3 bg-primary-subtle rounded-3 text-primary';
+      iconContainer.innerHTML = '<i data-lucide="wallet" style="width: 24px; height: 24px;"></i>';
+    }
+  }
+
+  if (window.lucide) window.lucide.createIcons();
 }
+
+// Manager Toggle for Revenue Masking / Privacy Mode
+window.toggleRevenuePrivacy = function() {
+  adminState.revenueMasked = !adminState.revenueMasked;
+  if (adminState.dashboardData && adminState.dashboardData.stats) {
+    renderMetrics(adminState.dashboardData.stats);
+  }
+};
 
 // =============================================================================
 // 4. ROOM RACK & LIVE CHECKOUT (User Guide Page 5 + Interactive Filter)

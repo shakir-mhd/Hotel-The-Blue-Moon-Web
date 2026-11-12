@@ -255,6 +255,9 @@ Below are the top 10 technical questions commonly asked by academic examiners, a
 ### Q10: How do you protect the database when the frontend connects directly via the Supabase client?
 > **Answer:** *"We enabled Row Level Security (RLS) on all 8 tables. Furthermore, direct write operations are restricted; critical business mutations (logins, check-in, check-out, reports) are executed via parameterized stored procedures marked `SECURITY DEFINER`. This prevents malicious users from running arbitrary UPDATE or DELETE queries through the browser console."*
 
+### Q11: Why are financial revenue figures hidden from Room Keepers and Receptionists?
+> **Answer:** *"This is a core tenet of Role-Based Access Control (RBAC) and the Principle of Least Privilege (PoLP). Total gross invoiced revenue and financial ledgers are executive-level confidential assets intended solely for the General Manager. Room Keepers instead see operational housekeeping metrics ('Turnover Readiness: 5/6 Rooms - 83% Ready'), Receptionists see guest booking counts ('Active Reservations: 3 Stays'), and the General Manager alone has access to gross revenue metrics with an interactive privacy masking toggle."*
+
 ---
 
 ## 🛠️ Local Development & Build Instructions
