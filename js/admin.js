@@ -10,12 +10,10 @@ import { supabaseClient } from './supabaseClient.js';
 const adminState = {
   staffUser: null,
   selectedPosition: null,
-  selectedLoginOption: 'admins',
   activeTab: 'room-rack',
   roomFilter: 'all',
   calculatedWalkinTotal: 0,
   currentEmailData: null,
-  lastFoundGuestBooking: null,
   dashboardData: {
     stats: {},
     rooms: [],
@@ -69,42 +67,10 @@ function initLiveClock() {
 }
 
 // =============================================================================
-// 1. ACCESS GATEWAY & LOGIN OPTIONS (User Guide Page 4 Screen 1 & Screen 2)
+// 1. POSITION SELECTION & AUTHENTICATION (User Guide Page 4)
 // =============================================================================
 
-// Screen 1: Choose Login Option (Customer vs Admins)
-window.selectLoginOption = function(option) {
-  adminState.selectedLoginOption = option;
-  document.getElementById('login-option-step')?.classList.add('d-none');
-
-  if (option === 'customer') {
-    document.getElementById('customer-portal-step')?.classList.remove('d-none');
-    document.getElementById('position-selection-step')?.classList.add('d-none');
-    document.getElementById('position-login-step')?.classList.add('d-none');
-  } else {
-    document.getElementById('position-selection-step')?.classList.remove('d-none');
-    document.getElementById('customer-portal-step')?.classList.add('d-none');
-    document.getElementById('position-login-step')?.classList.add('d-none');
-  }
-
-  if (window.lucide) window.lucide.createIcons();
-};
-
-// Return to Login Option Chooser
-window.resetLoginOption = function() {
-  adminState.selectedLoginOption = 'admins';
-  adminState.selectedPosition = null;
-
-  document.getElementById('login-option-step')?.classList.remove('d-none');
-  document.getElementById('customer-portal-step')?.classList.add('d-none');
-  document.getElementById('position-selection-step')?.classList.add('d-none');
-  document.getElementById('position-login-step')?.classList.add('d-none');
-  document.getElementById('login-error-alert')?.classList.add('d-none');
-
-  if (window.lucide) window.lucide.createIcons();
-};
-
-// Screen 2: User selects staff role / position
+// User selects staff role / position (Receptionist, Room Keeper, Manager)
 window.selectStaffPosition = function(position, defaultUser, defaultPass) {
   adminState.selectedPosition = position;
 
@@ -219,89 +185,7 @@ window.handleStaffLogout = function() {
 
   document.getElementById('admin-dashboard-view')?.classList.add('d-none');
   document.getElementById('admin-auth-view')?.classList.remove('d-none');
-  resetLoginOption();
-};
-
-// Customer Self-Service Lookup inside Admin Hub
-async function handleAdminGuestLookup(e) {
-  e.preventDefault();
-  const ref = document.getElementById('admin-lookup-ref')?.value?.trim();
-  const contact = document.getElementById('admin-lookup-contact')?.value?.trim();
-  const alertBox = document.getElementById('admin-lookup-alert');
-  const resultCard = document.getElementById('admin-lookup-result');
-  const submitBtn = document.getElementById('admin-lookup-btn');
-
-  if (!ref || !contact) return;
-  if (alertBox) alertBox.classList.add('d-none');
-  if (resultCard) resultCard.classList.add('d-none');
-
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'SEARCHING...';
-  }
-
-  try {
-    if (!supabaseClient) throw new Error("Supabase is not initialized.");
-
-    const { data, error } = await supabaseClient.rpc('get_booking_by_reference', {
-      p_reference: ref,
-      p_contact: contact
-    });
-
-    if (error || !data || !data.found) {
-      if (alertBox) {
-        alertBox.textContent = data?.message || "No reservation found matching this reference and contact detail.";
-        alertBox.classList.remove('d-none');
-      }
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'FIND RESERVATION & INVOICE';
-      }
-      return;
-    }
-
-    adminState.lastFoundGuestBooking = data;
-    document.getElementById('admin-res-ref').textContent = data.booking_reference;
-    document.getElementById('admin-res-status').textContent = (data.status || 'pending').replace('_', ' ');
-    document.getElementById('admin-res-name').textContent = data.guest_name;
-    document.getElementById('admin-res-room').textContent = `Room ${data.room_no || 'TBD'} (${data.room_type || 'Deluxe'})`;
-    document.getElementById('admin-res-dates').textContent = `${data.check_in_date} → ${data.check_out_date}`;
-    document.getElementById('admin-res-amount').textContent = formatLKR(data.invoice_amount || 0);
-
-    if (resultCard) resultCard.classList.remove('d-none');
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'FIND RESERVATION & INVOICE';
-    }
-    if (window.lucide) window.lucide.createIcons();
-
-  } catch (err) {
-    console.error("Lookup error:", err);
-    if (alertBox) {
-      alertBox.textContent = "Could not check reservation right now.";
-      alertBox.classList.remove('d-none');
-    }
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'FIND RESERVATION & INVOICE';
-    }
-  }
-}
-
-window.printAdminFoundInvoice = function() {
-  if (!adminState.lastFoundGuestBooking) return;
-  const b = adminState.lastFoundGuestBooking;
-  const invoice = {
-    invoice_id: b.invoice_id || b.booking_id,
-    booking_reference: b.booking_reference,
-    guest_name: b.guest_name,
-    guest_email: b.guest_email,
-    guest_phone: b.guest_phone,
-    room_no: b.room_no,
-    stay_dates: `${b.check_in_date} → ${b.check_out_date}`,
-    amount: b.invoice_amount || 0
-  };
-  openInvoiceModal(invoice);
+  resetPositionSelection();
 };
 
 // =============================================================================
@@ -1426,10 +1310,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Attach walk-in form handler
   const walkinForm = document.getElementById('walkin-form');
   walkinForm?.addEventListener('submit', handleWalkinSubmit);
-
-  // Attach customer search form in staff hub
-  const adminLookupForm = document.getElementById('admin-guest-lookup-form');
-  adminLookupForm?.addEventListener('submit', handleAdminGuestLookup);
 
   // Check existing session in sessionStorage
   const savedSession = sessionStorage.getItem('blue_moon_staff');
